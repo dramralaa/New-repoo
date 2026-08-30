@@ -1,0 +1,36 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في vera-repo):
+# CROSS_REPO_TOKEN, TELEGRAM_TOKEN, VERA_URL, VERA_DB, VERA_USER, VERA_PASS,
+# VERA1_CHAT_ID, VERA_FRIEND_CHAT_ID
+name: 🌙 [VERA] Daily Closing Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 21 * * *'
+
+jobs:
+  run_report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vera-repo
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install pandas requests pytz openpyxl matplotlib xlsxwriter
+      - name: Run Script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+          REPORT_TYPE: "DAILY"
+        run: python pharmacy_engine_p01.py

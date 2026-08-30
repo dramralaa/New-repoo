@@ -1,0 +1,33 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في vera-repo):
+# CROSS_REPO_TOKEN, VERA_URL, VERA_DB, VERA_USER, VERA_PASS, TELEGRAM_TOKEN,
+# VERA1_CHAT_ID, VERA_FRIEND_CHAT_ID
+name: 📦 [VERA] Daily Inventory Report - Noon
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'
+
+jobs:
+  vera:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vera-repo
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run Inventory Report - VERA
+        env:
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+        run: python daily_inventory_report_engine.py VERA

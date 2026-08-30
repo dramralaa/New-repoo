@@ -1,0 +1,31 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في vera-repo):
+# CROSS_REPO_TOKEN (لازم يشمل Actions: Read-only كمان)، TELEGRAM_TOKEN،
+# VERA1_CHAT_ID، VERA_FRIEND_CHAT_ID
+name: 💓 [VERA] Automation Health Digest (Weekly)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 5 * * 1'
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vera-repo
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run Health Digest
+        env:
+          GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          GITHUB_REPOSITORY: dramralaa/vera-repo
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+        run: python automation_health_digest.py

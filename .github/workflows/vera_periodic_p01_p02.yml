@@ -1,0 +1,47 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في vera-repo):
+# CROSS_REPO_TOKEN, VERA_URL, VERA_DB, VERA_USER, VERA_PASS, TELEGRAM_TOKEN,
+# VERA1_CHAT_ID, VERA2_CHAT_ID, VERA_FRIEND_CHAT_ID
+name: ⏱️ [VERA] Periodic Reports P01 + P02
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9,15 * * *'
+
+jobs:
+  run_p01_p02:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vera-repo
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install pandas requests pytz edge-tts matplotlib openpyxl xlsxwriter
+      - name: Run Periodic Report P01
+        env:
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+        run: python pharmacy_engine_p01.py
+      - name: Run Strategic Audit P02
+        if: always()
+        env:
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA2_CHAT_ID: ${{ secrets.VERA2_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+        run: python pharmacy_engine_p02.py

@@ -1,0 +1,50 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في vera-repo):
+# CROSS_REPO_TOKEN, GEMINI_API_KEY, GEMINI_API_KEY2 (اختياري), TELEGRAM_TOKEN,
+# TELEGRAM_CHAT_ID (fallback), VERA1_CHAT_ID, VERA_FRIEND_CHAT_ID, VERA_URL,
+# VERA_DB, VERA_USER, VERA_PASS
+name: 🎙️ [VERA] Gemini Voice Briefing (Morning)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'monthly (أمس + الشهر + النهاردة لحد دلوقتي) أو today (تحديث لحظي بس)'
+        required: true
+        default: 'monthly'
+        type: choice
+        options:
+          - monthly
+          - today
+  schedule:
+    - cron: '0 4 * * *'
+
+jobs:
+  run-voice-reporter-vera:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout vera-repo
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install google-genai requests pytz
+      - name: Execute Gemini Audio Reporter (VERA)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY2: ${{ secrets.GEMINI_API_KEY2 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
+          VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
+          JULEB_URL_VERA: ${{ secrets.VERA_URL }}
+          JULEB_DB_VERA: ${{ secrets.VERA_DB }}
+          JULEB_USER_VERA: ${{ secrets.VERA_USER }}
+          JULEB_PASS_VERA: ${{ secrets.VERA_PASS }}
+        run: python gemini_audio_reporter.py ${{ inputs.mode || 'monthly' }} VERA
