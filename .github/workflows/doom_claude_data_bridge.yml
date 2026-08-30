@@ -1,0 +1,46 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS,
+# JAHEZ_TOKEN (اختياري), JAHEZ_STORE_ID (اختياري), JAHEZ_WRITE_ENABLED (اختياري)
+name: 🤖 [DOOM] Claude Data Bridge (كل 3 ساعات)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5,17 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Export Data Snapshot for Claude
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python claude_data_bridge.py
+      - name: Build Financial Dashboard Data
+        run: python build_financial_dashboard_data.py
+      - name: Jahez Sync (detect + report + optional write-back)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
+        run: python jahez_sync_run.py
+      - name: Commit & Push
+        run: |
+          git config user.name "Juleb Bot"
+          git config user.email "bot@juleb.local"
+          git add data/ docs/financial_dashboard_data.json
+          git diff --staged --quiet || git commit -m "🤖 تحديث بيانات Claude Data Bridge اليومي"
+          git pull --rebase -q
+          git push

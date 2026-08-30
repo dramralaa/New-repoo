@@ -1,0 +1,34 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS,
+# TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+# ⚠️ جزء دوم بس (كل 3 أيام) - جزء فيرا مش هنا، ليه نسخته بتاعته في new-repoo كمان
+# لكن بتشتغل على vera-repo بدل juleb-daily-report.
+name: 📦 [DOOM] Daily Inventory Report (كل 3 أيام)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 */3 * *'
+
+jobs:
+  doom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run Inventory Report - DOOM
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python daily_inventory_report_engine.py DOOM

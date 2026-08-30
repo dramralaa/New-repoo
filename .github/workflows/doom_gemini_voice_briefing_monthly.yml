@@ -1,0 +1,41 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, GEMINI_API_KEY, GEMINI_API_KEY2 (اختياري), TELEGRAM_TOKEN,
+# TELEGRAM_CHAT_ID, TELEGRAM_CHAT_ID_STAFF (اختياري), JULEB_URL, JULEB_DB,
+# JULEB_USER, JULEB_PASS
+name: 🎙️ [DOOM] Gemini Voice Briefing - Monthly (9AM)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  run-voice-reporter-monthly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install google-genai requests pytz
+      - name: Execute Gemini Audio Reporter (monthly, DOOM)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY2: ${{ secrets.GEMINI_API_KEY2 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID_STAFF: ${{ secrets.TELEGRAM_CHAT_ID_STAFF }}
+          JULEB_URL_DOOM: ${{ secrets.JULEB_URL }}
+          JULEB_DB_DOOM: ${{ secrets.JULEB_DB }}
+          JULEB_USER_DOOM: ${{ secrets.JULEB_USER }}
+          JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS }}
+        run: |
+          python gemini_audio_reporter.py monthly DOOM

@@ -1,0 +1,34 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, TELEGRAM_TOKEN_DOOM, TELEGRAM_CHAT_ID_DOOM,
+# JULEB_URL_DOOM, JULEB_DB_DOOM, JULEB_USER_DOOM, JULEB_PASS_DOOM
+name: 🚨 [DOOM] Critical Alerts Engine
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6,16 * * *'
+
+jobs:
+  run_alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run Critical Alerts - DOOM
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+          JULEB_URL_DOOM: ${{ secrets.JULEB_URL_DOOM }}
+          JULEB_DB_DOOM: ${{ secrets.JULEB_DB_DOOM }}
+          JULEB_USER_DOOM: ${{ secrets.JULEB_USER_DOOM }}
+          JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS_DOOM }}
+          GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          GITHUB_REPOSITORY: dramralaa/juleb-daily-report
+        run: python critical_alerts_engine.py DOOM
