@@ -1,0 +1,37 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS
+name: 📊 [DOOM] Dashboard Data Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6,12,18 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Export Dashboard Data
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python dashboard_data_export.py
+      - name: Commit & Push
+        run: |
+          git config user.name "Juleb Bot"
+          git config user.email "bot@juleb.local"
+          git add docs/dashboard_data.json
+          git diff --staged --quiet || git commit -m "📊 تحديث بيانات الداشبورد التلقائي"
+          git pull --rebase -q
+          git push

@@ -1,0 +1,32 @@
+# 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
+# CROSS_REPO_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+# ⚠️ السكريبت بيقرا GITHUB_TOKEN/GITHUB_REPOSITORY لحفظ حالته (bot_state/) في
+# نفس الريبو الخاص - هنا لازم نمررهم صراحة (CROSS_REPO_TOKEN + اسم الريبو الخاص)
+# بدل القيم التلقائية اللي كانت بتشاور على الريبو الحالي.
+name: 💡 [DOOM] Pharmacist Lighting Reminders
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run Lighting Reminders
+        env:
+          GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          GITHUB_REPOSITORY: dramralaa/juleb-daily-report
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python pharmacist_lighting_reminders.py
