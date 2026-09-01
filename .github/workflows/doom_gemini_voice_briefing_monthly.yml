@@ -6,8 +6,11 @@ name: 🎙️ [DOOM] Gemini Voice Briefing - Monthly (9AM)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * 1'
+  # ⏸️ متوقّف مؤقتًا (1 سبتمبر 2026) بطلب صاحب المشروع - توفير استهلاك
+  # مفاتيح Gemini للتقارير الصوتية. التشغيل اليدوي (workflow_dispatch) لسه
+  # شغّال زي ما هو. للرجوع: شيل التعليق عن سطري schedule/cron تحت.
+  # schedule:
+  #   - cron: '0 6 * * 1'
 
 jobs:
   run-voice-reporter-monthly:
