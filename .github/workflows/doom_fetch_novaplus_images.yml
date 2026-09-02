@@ -1,0 +1,50 @@
+# 📥 يجرّب تحميل صور حقيقية من روابط doom_novaplus_hungerstation_name_match.json
+# (60+ دومين مختلف اتحكم عليهم "ميتة" بالتعميم من اختبار دومين واحد بس - راجع
+# PROJECT_CONTEXT.md). قراءة عامة + كتابة لـdoom-product-images بس (مفيش لمسة
+# لكتالوج جاهز خالص - صفر مخاطرة على البيانات الحية). يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN
+name: 📥 [DOOM] Fetch Novaplus/Hungerstation Images (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: juleb-daily-report
+      - name: Checkout doom-product-images
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/doom-product-images
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: doom-product-images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Fetch images
+        working-directory: juleb-daily-report
+        env:
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+        run: python jahez_fetch_novaplus_images.py
+      - name: Commit result report to juleb-daily-report
+        working-directory: juleb-daily-report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_novaplus_fetch_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 نتيجة تجربة تحميل صور Novaplus/Hungerstation"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
+      - name: Commit new images to doom-product-images
+        working-directory: doom-product-images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add by_juleb_code/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 صور جديدة من مصادر Novaplus/Hungerstation متعددة الدومينات"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git HEAD:$(git rev-parse --abbrev-ref HEAD)
