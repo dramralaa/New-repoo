@@ -1,0 +1,35 @@
+# 🔍 يتحقق (مش يخمّن) هل فيه حقل QR/GTIN حقيقي على product.product في جوليب
+# (Odoo) مش متسحوب في export_products() الحالية - قراءة فقط، صفر مخاطرة.
+# يدوي بالكامل، مفيش جدولة. الأسرار المطلوبة: CROSS_REPO_TOKEN, JULEB_URL,
+# JULEB_DB, JULEB_USER, JULEB_PASS
+name: 🔍 [DOOM] Juleb Probe QR Field (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe QR/GTIN field
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_probe_qr_field.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/juleb_qr_field_probe.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "🔍 نتيجة فحص حقل QR/GTIN في جوليب"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
