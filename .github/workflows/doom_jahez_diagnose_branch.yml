@@ -1,0 +1,26 @@
+# 🔬 تشخيص محدود: هل الكتابة شغالة على فرع معروف (ظهرة لبن/12922) وبس فرع
+# النسيم الجديد (13056) هو اللي بيتجاهل؟ صنف واحد حقيقي من الخطة الفعلية، عملية
+# رجعتها كتابة صح لو نجحت (رصيده فعلاً صفر). يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 🔬 [DOOM] Jahez Branch Write Diagnosis (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Diagnose (single item, known branch)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_diagnose_branch_write.py
