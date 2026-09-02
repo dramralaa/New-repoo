@@ -1,0 +1,33 @@
+# 🚑 تصحيح باگ حقيقي: أصناف دواء حية على جاهز اترفعت بزيادة تجارية 12% غلط
+# (المفروض الدواء بدون أي زيادة). بيستخدم نفس آلية تصحيح السعر الآمنة الموجودة
+# بالفعل (تحقق round-trip كامل بعد كل PUT). يدوي بالكامل، مفيش جدولة (تصحيح
+# مرة واحدة). الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 🚑 [DOOM] Jahez Fix Medicine Markup Bug (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Fix medicine markup bug
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_fix_medicine_markup_bug.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_medicine_markup_fix_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "🚑 نتيجة تصحيح باگ زيادة سعر الدواء"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
