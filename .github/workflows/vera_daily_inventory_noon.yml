@@ -3,10 +3,11 @@
 # VERA1_CHAT_ID, VERA_FRIEND_CHAT_ID
 name: 📦 [VERA] Daily Inventory Report - Noon
 
+# ⏸️ الجدولة الأوتوماتيكية اتشالت من هنا 2 سبتمبر 2026 - دُمجت في
+# vera_consolidated_6h.yml (طلب كريم لتقليل استهلاك الاستخدام). الملف ده فاضل شغال
+# بالتشغيل اليدوي بس (workflow_dispatch) لو احتجت تصحيح/اختبار السكريبت ده لوحده.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 9 * * *'
 
 jobs:
   vera:
