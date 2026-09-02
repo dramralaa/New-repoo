@@ -1,0 +1,40 @@
+# 🔎 استكشاف **للقراءة فقط** لمسارات API جاهز - يدوي بالكامل، مفيش أي جدولة.
+# الهدف: نلاقي المسار اللي بيتحكم في توفر الصنف لكل فرع (حالة "نفد")، بعد ما اتأكّد إن
+# soldOutBranches للقراءة فقط على مسار المنتج. **مفيش أي كتابة على المتجر هنا.**
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 🔎 [DOOM] Jahez Endpoint Probe (يدوي - قراءة فقط)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_id:
+        description: رقم فرع جاهز للتجربة (12922 ظهرة لبن / 13056 النسيم)
+        required: false
+        default: "12922"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe endpoints (GET only)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_PROBE_BRANCH: ${{ inputs.branch_id }}
+        run: python jahez_probe_endpoints.py
+      - name: Commit probe result
+        run: |
+          git config user.name "Juleb Bot"
+          git config user.email "bot@juleb.local"
+          git add data/jahez_endpoint_probe.json
+          git diff --staged --quiet || git commit -m "🔎 نتيجة استكشاف مسارات جاهز"
+          git pull --rebase -q
+          git push
