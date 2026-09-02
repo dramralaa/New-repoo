@@ -1,0 +1,33 @@
+# 📤 يرفع الأصناف الجاهزة فعليًا (باركود + مش دواء + صورة معتمدة) على جاهز -
+# industryId=1169 (نفس قيمة كل الكتالوج الحي). أمان: تحقق فوري من التصنيف على أول
+# صنف، وحاجز دوائر لفشل حقيقي. يدوي بالكامل، مفيش جدولة - قرار واعٍ في كل مرة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 📤 [DOOM] Jahez Upload Ready Batch (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Upload ready batch
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_upload_ready_batch.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_ready_batch_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📤 نتيجة رفع الدفعة الجاهزة لجاهز"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
