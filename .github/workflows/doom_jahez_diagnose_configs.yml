@@ -1,0 +1,26 @@
+# 🔬 تحقق من endpoint الـconfigs الجديد (POST .../configs) - اكتشاف من HAR حقيقي
+# (2 سبتمبر 2026) قبل الاعتماد الكامل. صنف واحد حقيقي، عملية صحيحة من الخطة
+# الفعلية. يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 🔬 [DOOM] Jahez Configs Endpoint Diagnosis (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Diagnose configs endpoint (single item)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_diagnose_configs_endpoint.py
