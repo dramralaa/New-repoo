@@ -1,0 +1,32 @@
+# 📋 قراءة بس - يجيب قائمة تصنيفات جاهز الكاملة (industries + subindustries) عشان
+# نبني جدول مطابقة يدوي (فئة جوليب ← industryId جاهز) مرة واحدة. مفيش أي كتابة.
+# يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN
+name: 📋 [DOOM] Jahez Industries Dump (قراءة فقط، يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Dump industries
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+        run: python jahez_dump_industries.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_industries.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📋 نتيجة جلب تصنيفات جاهز الكاملة"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
