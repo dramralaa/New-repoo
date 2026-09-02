@@ -1,0 +1,32 @@
+# 📦 يسحب كتالوج جاهز الحي بالكامل (كل صنف حقيقي، مش فرق) - مصدر الحقيقة لبناء
+# الماستر الشامل. قراءة فقط - صفر مخاطرة على كتالوج جاهز الحي. يدوي، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 📦 [DOOM] Jahez Dump Live Catalog (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Dump live catalog
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_dump_live_catalog.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_live_catalog.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📦 نسخة كاملة من كتالوج جاهز الحي"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
