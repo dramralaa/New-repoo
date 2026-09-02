@@ -1,0 +1,56 @@
+# 📥 يختبر جلب صور من قواعد البيانات المفتوحة (Open Food/Beauty/Products Facts) -
+# مطابقة بالباركود فقط (صفر مخاطرة تطابق غلط)، صور مرخّصة صراحة لإعادة الاستخدام.
+# قراءة عامة + كتابة لـdoom-product-images بس - صفر مخاطرة على كتالوج جاهز الحي.
+# يدوي بالكامل، مفيش جدولة. مدخل اختياري OPENFACTS_LIMIT (افتراضي 150).
+# الأسرار المطلوبة: CROSS_REPO_TOKEN
+name: 📥 [DOOM] Fetch Open Facts Images (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'عدد الأصناف (أعلى رصيدًا) - افتراضي 150'
+        required: false
+        default: '150'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: juleb-daily-report
+      - name: Checkout doom-product-images
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/doom-product-images
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: doom-product-images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Fetch images
+        working-directory: juleb-daily-report
+        env:
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+          OPENFACTS_LIMIT: ${{ github.event.inputs.limit }}
+        run: python jahez_fetch_openfacts_images.py
+      - name: Commit result report to juleb-daily-report
+        working-directory: juleb-daily-report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_openfacts_fetch_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 نتيجة تجربة جلب صور Open Food/Beauty/Products Facts"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
+      - name: Commit new images to doom-product-images
+        working-directory: doom-product-images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add by_juleb_code/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 صور جديدة من Open Food/Beauty/Products Facts"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git HEAD:$(git rev-parse --abbrev-ref HEAD)
