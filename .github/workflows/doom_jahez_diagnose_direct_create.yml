@@ -1,0 +1,33 @@
+# 🔬 تحقق من مسار "إنشاء صنف مباشر" (صورة → إنشاء منتج → configs) - مُدخل غير مؤكَّد
+# من قراءة Gemini لملف HAR ثانٍ (2 سبتمبر 2026)، بعد فشل الرفع الجماعي بصمت. صنف
+# واحد حقيقي بصورة حقيقية موجودة بالفعل. يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN, JAHEZ_TOKEN, JAHEZ_STORE_ID
+name: 🔬 [DOOM] Jahez Direct Create Endpoint Diagnosis (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Diagnose direct-create endpoint (single item)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_diagnose_direct_create.py
+      - name: Commit probe result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/jahez_direct_create_probe.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "🔬 نتيجة فحص endpoint إنشاء الصنف المباشر"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
