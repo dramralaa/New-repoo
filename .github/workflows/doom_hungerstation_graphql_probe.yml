@@ -1,0 +1,38 @@
+# 🔍 اختبار حقيقي لـGraphQL API الداخلي لبورتال شركاء هنجرستيشن (اكتشاف صاحب
+# المشروع عبر DevTools على حسابه الخاص) - بحث جماعي بالباركود، قراءة فقط، صفر
+# مخاطرة على أي كتالوج حي. التوكن بييجي كـ input مؤقت وقت التشغيل بس - مش
+# متخزّن في أي سر دائم ولا أي ملف في الريبو. يدوي بالكامل، مفيش جدولة.
+# الأسرار المطلوبة: CROSS_REPO_TOKEN فقط.
+name: 🔍 [DOOM] Hungerstation GraphQL Probe (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token من partner-app.hungerstation.com (صلاحية قصيرة، مش هيتخزّن)'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe Hungerstation GraphQL API
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+        run: python hungerstation_graphql_probe.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_graphql_probe.json
+          git diff --cached --quiet || git commit -m "🔍 نتيجة اختبار GraphQL API لهنجرستيشن (بحث جماعي بالباركود)"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
