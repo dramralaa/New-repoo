@@ -1,0 +1,29 @@
+# Probe the newly discovered dh-auth.io token endpoint used by
+# partner-app.hungerstation.com (https://vendorportal-eu.dh-auth.io/oauth2/token)
+# to learn the exact refresh_token grant shape via error-message diffing,
+# without needing a real refresh token yet. Optional secrets: HS_REFRESH_TOKEN
+# and HUNGERSTATION_VENDOR_PORTAL_CLIENT_ID (used only if present, to try a
+# real refresh too - never printed).
+name: HS Probe dh-auth Refresh Endpoint (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe dh-auth refresh endpoint
+        env:
+          HS_REFRESH_TOKEN: ${{ secrets.HUNGERSTATION_REFRESH_TOKEN }}
+          HS_VENDOR_PORTAL_CLIENT_ID: ${{ secrets.HUNGERSTATION_VENDOR_PORTAL_CLIENT_ID }}
+        run: python hungerstation_probe_dh_auth_refresh.py
