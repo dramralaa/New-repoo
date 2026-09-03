@@ -1,0 +1,22 @@
+# Fetch Hungerstation/Delivery Hero's official Assortment API Swagger docs
+# (public spec, no auth needed to view) - to understand the real
+# updateProducts endpoint shape before building continuous sync automation.
+name: HS Fetch Assortment API Docs (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fetch API docs
+        run: python hungerstation_fetch_assortment_api_docs.py
