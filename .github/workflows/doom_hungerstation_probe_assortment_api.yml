@@ -1,0 +1,30 @@
+# Safe discovery probe for the official Hungerstation/Delivery Hero
+# Assortment API using the new dedicated "Doom" API key (not the "Juleb"
+# key already in production use). Tries OAuth token endpoints, authenticated
+# swagger docs, and update-endpoint guesses with deliberately empty/invalid
+# bodies (so any real endpoint just returns a validation error, never a
+# real write) to learn the real host/auth/schema before building automation.
+# Required secret: HUNGERSTATION_CLIENT_SECRET (must exist in THIS repo's
+# secrets, since Actions secrets are not shared across repos).
+name: HS Probe Assortment API (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe Assortment API
+        env:
+          HS_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_probe_assortment_api.py
