@@ -1,0 +1,51 @@
+# Create real products directly on the Hungerstation vendor store (186329) via
+# CreateProductsBulk - closes the 3000-item catalog-depth gap Hungerstation
+# requires before allowing the branch to go live, without waiting on Juleb.
+# Items are real (barcode + category come from Hungerstation's own global
+# master catalog), not placeholder junk. Token comes in as a short-lived
+# workflow_dispatch input only, never stored. Fully manual, no schedule.
+# Required secret: CROSS_REPO_TOKEN.
+name: HS Create Products Bulk (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+      limit:
+        description: 'Max barcodes to process (start with 1 to test a single item and confirm visually on the portal first!)'
+        required: false
+        default: '1'
+      active_default:
+        description: 'Default active flag for new items (false = catalog depth only, true = orderable immediately)'
+        required: false
+        default: 'false'
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Create products bulk on Hungerstation
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+          MAX_BARCODES: ${{ github.event.inputs.limit }}
+          ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
+        run: python hungerstation_create_products_bulk.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_create_products_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Hungerstation CreateProductsBulk result"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
