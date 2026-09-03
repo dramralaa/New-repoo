@@ -1,0 +1,58 @@
+# Harvest images from our OWN Hungerstation store listing (not the global
+# master catalog) for real Juleb-origin SKUs (numeric or numeric+underscore
+# only - excludes the old non-Juleb junk master) that we don't have a local
+# image for yet. Read-only against Hungerstation; only writes to
+# doom-product-images. Required secret: CROSS_REPO_TOKEN.
+name: HS Harvest Own Store Images (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: juleb-daily-report
+      - name: Checkout doom-product-images
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/doom-product-images
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: doom-product-images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Harvest images from our own HS store
+        working-directory: juleb-daily-report
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+        run: python hungerstation_harvest_own_store_images.py
+      - name: Commit result report
+        if: always()
+        working-directory: juleb-daily-report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_own_store_harvest_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "HS own-store image harvest result"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
+      - name: Commit new images
+        if: always()
+        working-directory: doom-product-images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add by_juleb_code/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "New images harvested from our own Hungerstation store"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git HEAD:$(git rev-parse --abbrev-ref HEAD)
