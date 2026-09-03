@@ -44,6 +44,7 @@ jobs:
           MAX_BARCODES: ${{ github.event.inputs.limit }}
         run: python hungerstation_fetch_masterproducts.py
       - name: Commit result report to juleb-daily-report
+        if: always()
         working-directory: juleb-daily-report
         run: |
           git config user.name "github-actions[bot]"
@@ -52,6 +53,7 @@ jobs:
           git diff --cached --quiet || git commit -m "📥 نتيجة سحب كتالوج هنجرستيشن العالمي بالباركود"
           git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
       - name: Commit new images to doom-product-images
+        if: always()
         working-directory: doom-product-images
         run: |
           git config user.name "github-actions[bot]"
