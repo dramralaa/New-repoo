@@ -24,4 +24,5 @@ jobs:
       - name: Probe STS token endpoint
         env:
           HS_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          HS_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
         run: python hungerstation_probe_sts_token.py
