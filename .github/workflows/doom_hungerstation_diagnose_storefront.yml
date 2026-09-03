@@ -1,0 +1,30 @@
+# 🔍 استكشاف أولي لصفحة صيدليات هنجرستيشن (جدة - المنار) - يجيب الصفحة الخام
+# ويدوّر على JSON مُضمَّن/تلميحات API، بدون أي افتراض. قراءة فقط، صفر مخاطرة.
+# يدوي بالكامل، مفيش جدولة. الأسرار المطلوبة: CROSS_REPO_TOKEN
+name: 🔍 [DOOM] Hungerstation Diagnose Storefront (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe hungerstation.com storefront
+        run: python hungerstation_diagnose_storefront.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_storefront_probe.json data/hungerstation_raw_*.html 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "🔍 نتيجة استكشاف واجهة صيدليات هنجرستيشن"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
