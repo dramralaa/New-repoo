@@ -1,0 +1,31 @@
+# Probe + execute deletion of two manual test items (B7Z2B9, JX2RW1) on our
+# Hungerstation store. Tries a few schema-safe candidate mutations (GraphQL
+# rejects unknown fields/args with a clear error before any execution, so
+# this is safe to attempt) since the delete mutation has not been reverse
+# engineered from a real HAR yet. Required secret: CROSS_REPO_TOKEN.
+name: HS Delete Products Probe (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe delete mutation
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+        run: python hungerstation_delete_products_probe.py
