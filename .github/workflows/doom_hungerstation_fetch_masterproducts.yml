@@ -1,0 +1,61 @@
+# 📥 سحب بيانات المنتجات (اسم + صورة + تصنيف) من كتالوج هنجرستيشن العالمي
+# (Master Catalog) بالمطابقة المباشرة بالباركود (FindMasterProducts) - دقة
+# 100% زي sidalih، صفر تخمين اسم. كتابة لـdoom-product-images بس - صفر مخاطرة
+# على كتالوج جاهز الحي. التوكن بييجي كـinput مؤقت وقت التشغيل بس، مش متخزّن.
+# يدوي بالكامل، مفيش جدولة. الأسرار المطلوبة: CROSS_REPO_TOKEN.
+name: 📥 [DOOM] Hungerstation Fetch Master Products (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token من partner-app.hungerstation.com (صلاحية قصيرة، مش هيتخزّن)'
+        required: true
+      limit:
+        description: 'حد أقصى لعدد الباركودات (فاضي = كل الـ2643) - استخدمه للاختبار الأول'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: juleb-daily-report
+      - name: Checkout doom-product-images
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/doom-product-images
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: doom-product-images
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fetch master products by barcode
+        working-directory: juleb-daily-report
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+          MAX_BARCODES: ${{ github.event.inputs.limit }}
+        run: python hungerstation_fetch_masterproducts.py
+      - name: Commit result report to juleb-daily-report
+        working-directory: juleb-daily-report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_masterproducts_result.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 نتيجة سحب كتالوج هنجرستيشن العالمي بالباركود"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
+      - name: Commit new images to doom-product-images
+        working-directory: doom-product-images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add by_juleb_code/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 صور جديدة من كتالوج هنجرستيشن العالمي (مطابقة بالباركود)"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git HEAD:$(git rev-parse --abbrev-ref HEAD)
