@@ -1,0 +1,51 @@
+# Read the REAL registered webhook config (url + authorizationToken) for our
+# chain from the partner-app.hungerstation.com admin GraphQL API
+# (shops-integrations-api-me.deliveryhero.io/graphql, query webhookV2), for
+# domains ASSORTMENT_API and ORDER_TRANSMISSION. This is discovery only - no
+# writes. The full result (with the real authorizationToken) is uploaded as a
+# workflow artifact, NOT committed to the repo; only a redacted/masked summary
+# is committed.
+# Required secret: CROSS_REPO_TOKEN.
+name: HS Fetch Webhook Config (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fetch webhook config
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+        run: python hungerstation_fetch_webhook_config.py
+      - name: Upload full (secret) result as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hungerstation-webhook-config-secret
+          path: hungerstation_webhook_config_full.SECRET.json
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Commit redacted summary
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          rm -f hungerstation_webhook_config_full.SECRET.json
+          git add data/hungerstation_webhook_config_redacted.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Hungerstation webhook config discovery (redacted)"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
