@@ -1,0 +1,27 @@
+# Focused probe of the real discovered STS token endpoint
+# (https://sts.deliveryhero.io/oauth2/token) to learn its exact required
+# parameters, without needing the real client secret yet.
+# Optional secret: HUNGERSTATION_CLIENT_SECRET (used only if present, to try
+# a real token fetch too - never printed).
+name: HS Probe STS Token Endpoint (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe STS token endpoint
+        env:
+          HS_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_probe_sts_token.py
