@@ -1,0 +1,30 @@
+# Read-only GraphQL introspection to discover exactly which fields
+# ProductUpdate/Product support (price? quantity? not just active) before
+# deciding whether continuous sync automation is feasible. Required secret:
+# CROSS_REPO_TOKEN.
+name: HS Introspect Types (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+
+jobs:
+  introspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Introspect types
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+        run: python hungerstation_introspect_types.py
