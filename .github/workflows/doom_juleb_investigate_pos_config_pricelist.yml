@@ -1,0 +1,30 @@
+# Safe, read-only investigation: why the "هنجرستيشن - سقف أمان +25%" pricelist
+# shows by name in POS but never changes the displayed price - even for a
+# manual fixed-price line the project owner added themselves. Checks
+# pos.config for a pricelist whitelist field, and product.pricelist for any
+# non-standard "activation" field matching what Juleb's own onboarding video
+# described (new pricelists need Juleb to activate them).
+name: Juleb Investigate pos.config Pricelist (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Investigate pos.config pricelist whitelist
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_investigate_pos_config_pricelist.py
