@@ -1,0 +1,31 @@
+# Safe, read-only investigation of the REAL promotion model found by the
+# project owner via screenshot: pos.promotion (Point of Sale > Pos Promotion
+# menu on medova.juleb.com), a custom rule-based promo engine (35 active
+# rules) - not the generic sale.coupon.program/loyalty.program guessed
+# earlier (those don't exist on this instance). Checks whether promotions
+# are scoped to a specific pricelist/company, or apply regardless of which
+# pricelist is active at checkout.
+name: Juleb Investigate pos.promotion (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Investigate pos.promotion model
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_investigate_pos_promotion.py
