@@ -1,0 +1,42 @@
+# Fires automatically when the Tampermonkey userscript
+# (tools/hungerstation_token_capture.user.js in juleb-daily-report) captures a
+# fresh session token from a real logged-in browser tab and sends a
+# repository_dispatch event - no manual token copy/paste needed after the
+# one-time browser-side setup. The token never touches this repo or any log;
+# it's passed straight through as an env var to the same scripts the manual
+# workflow_dispatch runs use.
+#
+# Add more steps here as new continuous-sync scripts are built (e.g. the
+# Odoo-price -> Hungerstation price sync) - this is the entry point for all
+# "runs automatically whenever we have a fresh token" automation.
+name: HS Auto Sync (token-triggered)
+
+on:
+  repository_dispatch:
+    types: [hs_token_captured]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fetch webhook config (proof the auto-triggered pipeline works)
+        env:
+          HS_TOKEN: ${{ github.event.client_payload.token }}
+        run: python hungerstation_fetch_webhook_config.py
+      - name: Commit redacted summary
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_webhook_config_redacted.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Auto sync: webhook config (token-triggered)"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
