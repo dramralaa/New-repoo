@@ -1,0 +1,29 @@
+# Safe, read-only-equivalent check (no actual writes) of whether the existing
+# JULEB_* Odoo credentials (same ones claude_data_bridge.py already uses for
+# reads) have write/create access rights on Pricelist-related models. Uses
+# Odoo's official check_access_rights RPC method, which only answers
+# True/False and never modifies data.
+name: Juleb Check Write Access (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check write access rights
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_check_write_access.py
