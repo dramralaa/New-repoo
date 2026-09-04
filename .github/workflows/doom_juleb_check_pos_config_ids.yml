@@ -1,0 +1,27 @@
+# Safe, read-only: map pos.config id -> name, to confirm which POS terminal
+# the project owner is actually testing on (their POS URL showed config_id=4)
+# vs. the two real production registers (Doom 1 POS / Doom 2 POS).
+name: Juleb Check pos.config IDs (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check pos.config IDs
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_check_pos_config_ids.py
