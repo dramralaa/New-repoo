@@ -1,0 +1,29 @@
+# Safe, read-only probe of the OFFICIAL Hungerstation Partner API (OAuth 2.0
+# client_credentials, issued from Vendor Portal -> Shops Integration ->
+# Secrets Management), as opposed to the browser session token used
+# everywhere else so far. Gets a 2-hour access_token from a server-side
+# credential (no 4-hour manual re-login needed), then does a single GET on
+# the chain's catalog to confirm read access - no writes.
+name: HS Partner API Probe (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe Partner API
+        env:
+          HS_PARTNER_CLIENT_ID: ${{ secrets.HS_PARTNER_CLIENT_ID }}
+          HS_PARTNER_CLIENT_SECRET: ${{ secrets.HS_PARTNER_CLIENT_SECRET }}
+        run: python hungerstation_partner_api_probe.py
