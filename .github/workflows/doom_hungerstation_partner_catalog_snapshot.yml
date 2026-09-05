@@ -26,15 +26,8 @@ jobs:
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
         run: python hungerstation_partner_catalog_snapshot.py
-      - name: Commit snapshot
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          cd ../juleb-daily-report 2>/dev/null || cd .
       - name: Commit snapshot to juleb-daily-report
         if: always()
-        working-directory: .
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
