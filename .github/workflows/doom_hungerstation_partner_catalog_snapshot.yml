@@ -1,0 +1,43 @@
+# Full read-only pull of the real Hungerstation catalog via the official
+# Partner API (DOOMAPI2 token), to build the active-vs-inactive statistics
+# the project owner asked for. Paginates all pages, respects the 50
+# req/min rate limit, and does one final safe schema-discovery PUT
+# (products: [{}]) - still zero real writes.
+name: HS Partner API Catalog Snapshot (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fetch catalog snapshot
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_partner_catalog_snapshot.py
+      - name: Commit snapshot
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cd ../juleb-daily-report 2>/dev/null || cd .
+      - name: Commit snapshot to juleb-daily-report
+        if: always()
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_partner_catalog_snapshot.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Hungerstation Partner API catalog snapshot"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
