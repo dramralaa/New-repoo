@@ -1,10 +1,17 @@
-# Safe, read-only probe of the OFFICIAL Hungerstation Partner API (OAuth 2.0
-# client_credentials, issued from Vendor Portal -> Shops Integration ->
-# Secrets Management), as opposed to the browser session token used
-# everywhere else so far. Gets a 2-hour access_token from a server-side
-# credential (no 4-hour manual re-login needed), then does a single GET on
-# the chain's catalog to confirm read access - no writes.
-name: HS Partner API Probe (manual, read-only)
+# Safe probe of the OFFICIAL Hungerstation Partner API (OAuth 2.0
+# client_credentials, "DOOMAPI" token issued from Vendor Portal -> Shops
+# Integration -> Secrets Management), against the real host
+# hungerstation.partner.deliveryhero.io - confirmed independently via
+# Delivery Hero's own developer docs, and never tried before (the earlier
+# "Doom" token attempt guessed at different, wrong hosts - see
+# hungerstation_probe_assortment_api.py and PROJECT_CONTEXT.md for that
+# history so we don't repeat it). Gets a 2-hour access_token from a
+# server-side credential (no 4-hour manual re-login needed), then does a
+# read GET (may legitimately 404 - the existing Assortment integration is
+# push-only, no confirmed read API) and a PUT with a deliberately empty
+# body (elicits a validation error only, zero real write) to learn the
+# real update schema.
+name: HS Partner API Probe (manual)
 
 on:
   workflow_dispatch:
@@ -24,6 +31,6 @@ jobs:
       - run: pip install requests
       - name: Probe Partner API
         env:
-          HS_PARTNER_CLIENT_ID: ${{ secrets.HS_PARTNER_CLIENT_ID }}
-          HS_PARTNER_CLIENT_SECRET: ${{ secrets.HS_PARTNER_CLIENT_SECRET }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
         run: python hungerstation_partner_api_probe.py
