@@ -1,0 +1,28 @@
+# Safe, read-only: read the exact item_ids configuration of the pricelist
+# Juleb's support team created and confirmed working live in POS
+# ("هنجرستيشن - سقف أمان"), to compare against our own attempt (id=2,
+# compute_price='formula') and find the real working pattern.
+name: Juleb Read Working Pricelist (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Read working pricelist
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_read_working_pricelist.py

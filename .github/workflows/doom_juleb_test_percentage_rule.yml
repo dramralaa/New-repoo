@@ -1,0 +1,29 @@
+# One real, isolated write: adds a single compute_price='percentage'
+# (percent_price=-25) pricelist item on a fresh product, matching Juleb's
+# officially-supported bulk-import template pattern (not 'formula', which
+# is confirmed not to work in POS). Used to validate this compute type
+# before applying it across the full catalog.
+name: Juleb Test Percentage Rule (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Test percentage rule
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_test_percentage_rule.py
