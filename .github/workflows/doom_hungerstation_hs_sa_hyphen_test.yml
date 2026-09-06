@@ -1,0 +1,27 @@
+# اختبار سريع (صفر كتابة حقيقية) لفرضية جديدة: كود المنصة الصحيح هو HS-SA
+# (بشرطة -) مش HS_SA (بشرطة سفلية _)، مستنتج من الـscope الحقيقي جوه توكن
+# فيرا الشغّال فعليًا: "partner-api.{chain_id}.HS-SA.*.*". كل محاولات
+# التشخيص السابقة على حساب دوم جربت HS_SA بس - لسه ما جربناش HS-SA.
+name: HS Partner API - HS-SA hyphen test (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Test HS-SA hyphen variant
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_partner_hs_sa_hyphen_test.py
