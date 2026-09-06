@@ -1,0 +1,28 @@
+# Safe read-only probe of Vera's own Hungerstation Partner API token
+# (from Kareem, 6 Sep 2026) - same OAuth flow already confirmed working
+# for DOOM. Kept under Vera-prefixed secret names, isolated from DOOM's
+# HUNGERSTATION_CLIENT_ID/SECRET, pending full repo separation.
+name: Vera HS Partner API Probe (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe Vera Partner API
+        env:
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+          VERA_HS_VENDOR_ID: ${{ secrets.VERA_HS_VENDOR_ID }}
+        run: python vera_hungerstation_partner_probe.py
