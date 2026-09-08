@@ -1,1 +1,31 @@
-bmFtZTogSFMgUGFydG5lciBBUEkgLSBDYXRhbG9nIFNuYXBzaG90IChET09NLCBtYW51YWwsIHJlYWQtb25seSkKCm9uOgogIHdvcmtmbG93X2Rpc3BhdGNoOiB7fQoKam9iczoKICBzbmFwc2hvdDoKICAgIHJ1bnMtb246IHVidW50dS1sYXRlc3QKICAgIHN0ZXBzOgogICAgICAtIG5hbWU6IENoZWNrb3V0IGp1bGViLWRhaWx5LXJlcG9ydAogICAgICAgIHVzZXM6IGFjdGlvbnMvY2hlY2tvdXRAdjQKICAgICAgICB3aXRoOgogICAgICAgICAgcmVwb3NpdG9yeTogZHJhbXJhbGFhL2p1bGViLWRhaWx5LXJlcG9ydAogICAgICAgICAgdG9rZW46ICR7eyBzZWNyZXRzLkNST1NTX1JFUE9fVE9LRU4gfX0KICAgICAgLSB1c2VzOiBhY3Rpb25zL3NldHVwLXB5dGhvbkB2NQogICAgICAgIHdpdGg6CiAgICAgICAgICBweXRob24tdmVyc2lvbjogJzMuMTAnCiAgICAgIC0gcnVuOiBwaXAgaW5zdGFsbCByZXF1ZXN0cwogICAgICAtIG5hbWU6IFB1bGwgY2F0YWxvZyBzbmFwc2hvdCB2aWEgUGFydG5lciBBUEkKICAgICAgICBlbnY6CiAgICAgICAgICBIVU5HRVJTVEFUSU9OX0NMSUVOVF9JRDogJHt7IHNlY3JldHMuSFVOR0VSU1RBVElPTl9DTElFTlRfSUQgfX0KICAgICAgICAgIEhVTkdFUlNUQVRJT05fQ0xJRU5UX1NFQ1JFVDogJHt7IHNlY3JldHMuSFVOR0VSU1RBVElPTl9DTElFTlRfU0VDUkVUIH19CiAgICAgICAgcnVuOiBweXRob24gaHVuZ2Vyc3RhdGlvbl9wYXJ0bmVyX2NhdGFsb2dfc25hcHNob3QucHkKICAgICAgLSBuYW1lOiBDb21taXQgcmVzdWx0CiAgICAgICAgaWY6IGFsd2F5cygpCiAgICAgICAgcnVuOiB8CiAgICAgICAgICBnaXQgY29uZmlnIHVzZXIubmFtZSAiZ2l0aHViLWFjdGlvbnNbYm90XSIKICAgICAgICAgIGdpdCBjb25maWcgdXNlci5lbWFpbCAiZ2l0aHViLWFjdGlvbnNbYm90XUB1c2Vycy5ub3JlcGx5LmdpdGh1Yi5jb20iCiAgICAgICAgICBnaXQgYWRkIGRhdGEvaHVuZ2Vyc3RhdGlvbl9wYXJ0bmVyX2NhdGFsb2dfc25hcHNob3QuanNvbiAyPi9kZXYvbnVsbCB8fCB0cnVlCiAgICAgICAgICBnaXQgZGlmZiAtLWNhY2hlZCAtLXF1aWV0IHx8IGdpdCBjb21taXQgLW0gIvCfk6UgU25hcHNob3Qg2YPYqtin2YTZiNi6INmH2YbYrNix2LPYqtmK2LTZhiAoRE9PTSkiCiAgICAgICAgICBnaXQgcHVzaCBodHRwczovL3gtYWNjZXNzLXRva2VuOiR7eyBzZWNyZXRzLkNST1NTX1JFUE9fVE9LRU4gfX1AZ2l0aHViLmNvbS9kcmFtcmFsYWEvanVsZWItZGFpbHktcmVwb3J0LmdpdCBIRUFEOm1haW4K
+name: HS Partner API - Catalog Snapshot (DOOM, manual, read-only)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Pull catalog snapshot via Partner API
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_partner_catalog_snapshot.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_partner_catalog_snapshot.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "📥 Snapshot كتالوج هنجرستيشن (DOOM)"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
