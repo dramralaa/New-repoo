@@ -1,0 +1,36 @@
+# 🔍 يقارن حقول res.users/hr.employee بين نفلة وسالم - سالم بياخد عمولته صح على نفس
+# نقطة البيع المشتركة، نفلة صفر بالكامل. بيدوّر على أي حقل commission/pharmacist/
+# eligib/incentive مختلف بينهم. قراءة فقط. الأسرار المطلوبة: CROSS_REPO_TOKEN,
+# JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS
+name: 🔍 [DOOM] Juleb Probe Naflah User Profile (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe user/employee profile fields
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_probe_naflah_user_profile.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/juleb_naflah_user_profile_probe.json
+          git diff --cached --quiet || git commit -m "🔍 نتيجة مقارنة بروفايل نفلة وسالم"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:claude/assortment-webhook-discovery-a4mxc6
