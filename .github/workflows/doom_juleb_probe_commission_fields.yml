@@ -1,0 +1,37 @@
+# 🔍 يدوّر على الأسماء التقنية الحقيقية لأي حقل عمولة/حافز على pos.order.line أو
+# pos.order أو pos.session، وبيعمل dump كامل لكل حقول أول سطور فواتير naflah
+# الحقيقية - عشان نتأكد إننا مش بنفوّت حقل عمولة حقيقي زي مفاجأة j_category_2/3.
+# قراءة فقط. الأسرار المطلوبة: CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER,
+# JULEB_PASS
+name: 🔍 [DOOM] Juleb Probe Commission Fields (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe commission fields
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_probe_commission_fields.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/juleb_commission_field_probe.json data/juleb_naflah_full_line_dump.json
+          git diff --cached --quiet || git commit -m "🔍 نتيجة فحص حقول العمولة الحقيقية في جوليب"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:claude/assortment-webhook-discovery-a4mxc6
