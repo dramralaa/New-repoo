@@ -1,0 +1,77 @@
+# تحديث ماستر جاهز الشامل (9 سبتمبر 2026، بإذن صريح من صاحب المشروع):
+#  1. سحب كتالوج جاهز الحي الطازة.
+#  2. إخفاء أي صنف من الـ169 الممنوع بيعه (Antibiotic/CNS) لسه ظاهر على جاهز.
+#  3. إعادة بناء الماستر الشامل (بيستفيد من صور هنجرستيشن اليتيمة اللي اتحصدت
+#     في doom-product-images).
+#  4. رفع الأصناف الجاهزة فعليًا (باركود + صورة) للفرعين مع بعض - بسعر 1:1.
+#  5. تصحيح كل فروق السعر الحالية لـ1:1 (دفعة كبيرة توفيقية لمرة واحدة).
+name: 🩺 [DOOM] Jahez Master Update + RX Hide + Expand (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+
+      - name: Partial clone doom-product-images (by_juleb_code only)
+        run: |
+          PARENT_DIR="$(dirname "$GITHUB_WORKSPACE")"
+          git clone --filter=blob:none --no-checkout --depth 1 \
+            https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git \
+            "$PARENT_DIR/doom-product-images"
+          cd "$PARENT_DIR/doom-product-images"
+          git sparse-checkout init --cone
+          git sparse-checkout set by_juleb_code
+          git checkout main || git checkout master
+          echo "IMAGES_REPO_PATH=$PARENT_DIR/doom-product-images" >> "$GITHUB_ENV"
+
+      - name: 1) Dump live Jahez catalog
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_dump_live_catalog.py
+
+      - name: 2) Hide forbidden-to-sell (RX) items still live on Jahez
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_hide_rx_items.py
+
+      - name: 3) Rebuild master catalog (uses harvested images)
+        run: python jahez_build_master_catalog.py
+
+      - name: 4) Upload ready items (both branches, 1:1 pricing, RX excluded)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python jahez_upload_ready_batch.py
+
+      - name: 5) Reconcile prices to exact 1:1 (large one-off batch)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: "1"
+          JAHEZ_PRICE_MODE: "exact"
+          JAHEZ_PRICE_MAX_ITEMS: "5000"
+          JAHEZ_SOLDOUT_SYNC: "1"
+        run: python jahez_sync_run.py
+
+      - name: Commit results back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🩺 جاهز: تحديث الماستر + إخفاء Rx + توسعة + تصحيح سعر 1:1 (9 سبتمبر)" && git pull --rebase && git push)
