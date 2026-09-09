@@ -1,0 +1,36 @@
+# 🔍 يفحص سطور فواتير naflah هذا الشهر (pharmacist_commission/p_commission_total)
+# عشان نفهم ليه نسبة البروفيت والعمولة عندها صفر. قراءة فقط. الأسرار المطلوبة:
+# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS
+name: 🔍 [DOOM] Juleb Probe Naflah Commission (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Probe naflah commission lines
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python juleb_probe_naflah_commission.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/juleb_naflah_commission_probe.json
+          git diff --cached --quiet || git commit -m "🔍 نتيجة فحص عمولة naflah في جوليب"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:claude/assortment-webhook-discovery-a4mxc6

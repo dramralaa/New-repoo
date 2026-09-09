@@ -1,0 +1,36 @@
+# 💊 ماستر الأدوية فقط لكل فروع دوم (كود/اسم/فئة/فئة فرعية/سعر/رصيد كل فرع + علامة
+# CNS مسبقة) - بعد حادثة بيع دواء CNS بالخطأ من فرع النسيم (دوم 1) على جاهز. يدوي
+# بالكامل. الأسرار المطلوبة: CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER,
+# JULEB_PASS
+name: 💊 [DOOM] Medicine Master Export (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Export DOOM medicine master
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python doom_medicine_master_export.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/doom_medicine_master_export.json
+          git diff --cached --quiet || git commit -m "💊 تحديث ماستر الأدوية لكل فروع دوم"
+          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:claude/assortment-webhook-discovery-a4mxc6
