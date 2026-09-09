@@ -32,14 +32,30 @@ jobs:
           git sparse-checkout init --cone
           git sparse-checkout set hungerstation_orphaned_harvest
           git checkout main || git checkout master
-      - name: Move harvested files into target repo and push
+      - name: Move harvested files into target repo and push in batches
         run: |
           mkdir -p target-repo/hungerstation_orphaned_harvest
           cp -r hungerstation_orphaned_harvest/. target-repo/hungerstation_orphaned_harvest/
           cd target-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add hungerstation_orphaned_harvest
-          git diff --cached --quiet && echo "No changes" || (git commit -m "📸 حصاد صور 3,018 صنف يتيم من هنجرستيشن (قبل الحذف)" && git push)
+          git config http.postBuffer 1048576000
+          git config http.lowSpeedLimit 0
+          git config http.lowSpeedTime 999999
+          # دفعات صغيرة (300 ملف/كوميت) - أسهل على السيرفر من push واحد ضخم،
+          # ولو حصل انقطاع نعرف بالظبط وقفنا فين
+          find hungerstation_orphaned_harvest -maxdepth 1 -type f | sort > /tmp/all_files.txt
+          split -l 300 /tmp/all_files.txt /tmp/batch_
+          for batch in /tmp/batch_*; do
+            git add -f $(cat "$batch")
+            git diff --cached --quiet && continue
+            git commit -q -m "📸 حصاد صور أصناف يتيمة من هنجرستيشن (دفعة $(basename $batch))"
+            for attempt in 1 2 3 4 5; do
+              git push && break
+              echo "فشلت محاولة $attempt - إعادة محاولة بعد 5 ثواني..."
+              sleep 5
+            done
+          done
+          echo "خلصنا كل الدفعات"
       - name: Report summary
         run: cat data/hungerstation_orphaned_harvest_summary.json
