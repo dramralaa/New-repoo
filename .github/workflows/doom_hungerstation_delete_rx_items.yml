@@ -1,0 +1,40 @@
+# حذف حقيقي (deleteProduct) لأصناف Antibiotic/CNS - محتاج توكن جلسة متصفح
+# مؤقت (HS_TOKEN) يوفّره صاحب المشروع وقت التشغيل بس (مش مخزّن كسيكريت دائم).
+# أول خطوة بتقنّع (mask) قيمة التوكن في كل اللوجز اللاحقة كطبقة حماية إضافية.
+name: HS Delete RX Items (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      hs_token:
+        description: 'HS_TOKEN مؤقت (Bearer، صلاحية ~4 ساعات) - من devtools المتصفح'
+        required: true
+        type: string
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mask token in logs
+        run: echo "::add-mask::${{ inputs.hs_token }}"
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Delete
+        env:
+          HS_TOKEN: ${{ inputs.hs_token }}
+        run: python hungerstation_delete_rx_items.py
+      - name: Commit result back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
+          git add data/hungerstation_rx_delete_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record RX delete result" && git push)
