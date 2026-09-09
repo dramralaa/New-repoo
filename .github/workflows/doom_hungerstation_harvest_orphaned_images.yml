@@ -1,0 +1,45 @@
+# حصاد صور الأصناف اليتيمة (3,018 صنف) قبل حذفهم من هنجرستيشن - راجع
+# hungerstation_harvest_orphaned_images.py في juleb-daily-report. بيدفع
+# النتيجة لريبو doom-product-images (منفصل، +1.2GB) - باستخدام partial clone +
+# sparse-checkout عشان محتاجينش نسحب كل تاريخ/محتوى الريبو الحالي، بس نضيف
+# مجلد جديد.
+name: 📸 [DOOM] Harvest Orphaned Hungerstation Images (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Download orphaned item images
+        run: python hungerstation_harvest_orphaned_images.py
+      - name: Partial clone + sparse-checkout doom-product-images
+        run: |
+          git clone --filter=blob:none --no-checkout --depth 1 \
+            https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/doom-product-images.git target-repo
+          cd target-repo
+          git sparse-checkout init --cone
+          git sparse-checkout set hungerstation_orphaned_harvest
+          git checkout main || git checkout master
+      - name: Move harvested files into target repo and push
+        run: |
+          mkdir -p target-repo/hungerstation_orphaned_harvest
+          cp -r hungerstation_orphaned_harvest/. target-repo/hungerstation_orphaned_harvest/
+          cd target-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add hungerstation_orphaned_harvest
+          git diff --cached --quiet && echo "No changes" || (git commit -m "📸 حصاد صور 3,018 صنف يتيم من هنجرستيشن (قبل الحذف)" && git push)
+      - name: Report summary
+        run: cat data/hungerstation_orphaned_harvest_summary.json
