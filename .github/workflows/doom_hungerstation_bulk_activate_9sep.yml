@@ -1,0 +1,33 @@
+# تفعيل جماعي حقيقي (كتابة فعلية على منصة هنجرستيشن) - بإذن صريح من صاحب
+# المشروع 9 سبتمبر 2026. راجع hungerstation_bulk_activate_9sep.py في
+# juleb-daily-report للسياق الكامل. Checkout للـbranch (السكريبت لسه مش main).
+name: HS Bulk Activate 879 Items (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Bulk activate
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_bulk_activate_9sep.py
+      - name: Commit result report back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_bulk_activate_9sep_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record bulk activation result (9 Sept)" && git push)
