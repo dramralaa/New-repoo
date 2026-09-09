@@ -1,0 +1,38 @@
+# تصحيح عاجل - حادثة تسعير: تصحيح السعر الجماعي على جاهز النهارده كان ناسي
+# الضريبة على الأصناف الخاضعة لها (exact_price() اتصلّحت في jahez_sync_engine.py).
+# ده تشغيلة jahez_sync_run.py عادية بس بحجم دفعة كبير عشان يصحح كل الفروق دفعة واحدة.
+name: 🚨 Jahez VAT Price Fix (urgent, manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Reconcile prices to correct (VAT-inclusive) 1:1
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: "1"
+          JAHEZ_PRICE_MODE: "exact"
+          JAHEZ_PRICE_MAX_ITEMS: "5000"
+          JAHEZ_SOLDOUT_SYNC: "1"
+        run: python jahez_sync_run.py
+      - name: Commit results back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🚨 جاهز: تصحيح السعر ليشمل الضريبة الناقصة" && git pull --rebase && git push)
