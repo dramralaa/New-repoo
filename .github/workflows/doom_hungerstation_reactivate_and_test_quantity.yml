@@ -1,0 +1,32 @@
+# إعادة تفعيل 4 أصناف + فحص قبول حقل quantity - راجع
+# hungerstation_reactivate_and_test_quantity.py في juleb-daily-report.
+name: HS Reactivate 4 Items + Quantity Test (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Reactivate + test
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_reactivate_and_test_quantity.py
+      - name: Commit result back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_reactivate_test_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record reactivate+quantity test result" && git push)
