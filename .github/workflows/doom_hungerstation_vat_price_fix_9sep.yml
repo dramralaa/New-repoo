@@ -28,6 +28,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase
           git add data/hungerstation_vat_price_fix_result.json
-          git diff --cached --quiet && echo "No changes" || (git commit -m "Record HS VAT price fix result" && git push)
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record HS VAT price fix result" && git pull --rebase && git push)
