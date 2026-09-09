@@ -1,0 +1,33 @@
+# تصحيح عاجل - حادثة تسعير: دفعتي التصحيح الجماعي النهارده كانتا ناسيتين
+# الضريبة على الأصناف الخاضعة لها (راجع hungerstation_vat_price_fix_9sep.py).
+name: 🚨 HS VAT Price Fix (urgent, manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: VAT price fix
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_vat_price_fix_9sep.py
+      - name: Commit result report back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
+          git add data/hungerstation_vat_price_fix_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record HS VAT price fix result" && git push)
