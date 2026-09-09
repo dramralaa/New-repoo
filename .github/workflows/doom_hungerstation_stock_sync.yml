@@ -1,0 +1,42 @@
+# "الحل النهائي لمزامنة الرصيد" - طلب صريح من صاحب المشروع 9 سبتمبر 2026.
+# راجع hungerstation_stock_sync.py في juleb-daily-report للمنطق الكامل.
+# بيقرأ رصيد جوليب الحي (دوم2) وحالة هنجرستيشن الحية كل ساعة، ويصحح active
+# لأي صنف اختلفت حالته (نفد الرصيد أو رجع الرصيد) - دلتا بس، مش الكتالوج كامل.
+name: 🔄 [DOOM] Hungerstation Stock Sync (كل ساعة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 * * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Sync
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python hungerstation_stock_sync.py
+      - name: Commit result back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
+          git add data/hungerstation_stock_sync_last_run.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔄 نتيجة مزامنة رصيد هنجرستيشن" && git push)
