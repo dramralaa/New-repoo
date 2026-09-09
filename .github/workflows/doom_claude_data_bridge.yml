@@ -1,12 +1,14 @@
 # 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
 # CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS,
 # JAHEZ_TOKEN (اختياري), JAHEZ_STORE_ID (اختياري), JAHEZ_WRITE_ENABLED (اختياري)
-name: 🤖 [DOOM] Claude Data Bridge (كل 3 ساعات)
+name: 🤖 [DOOM] Claude Data Bridge (6 مرات يوميًا)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 5,17 * * *'
+    # 9 سبتمبر 2026: كان بمعدل مرتين يوميًا بس (5,17) - رُفع لـ6 مرات (كل 4 ساعات)
+    # عشان يطابق فعليًا سياسة "6 دورات مزامنة يوميًا" المعلنة لعميل جاهز.
+    - cron: '0 */4 * * *'
 
 jobs:
   sync:
