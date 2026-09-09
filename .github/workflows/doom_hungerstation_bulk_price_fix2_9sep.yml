@@ -1,0 +1,35 @@
+# دفعة تصحيح سعر تانية - الـ411 صنف اللي اتفعّلوا النهارده (كانوا مش موجودين
+# في دفعة التصحيح الأولى لأنهم كانوا لسه inactive وقتها) وسعرهم لسه قديم.
+name: HS Bulk Price Fix 1:1 (batch 2, manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Bulk price fix (batch 2)
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          PRICE_FIX_BATCH_FILE: data/hungerstation_price_fix_batch2_9sep.json
+          PRICE_FIX_RESULT_FILE: data/hungerstation_bulk_price_fix2_9sep_result.json
+        run: python hungerstation_bulk_price_fix_9sep.py
+      - name: Commit result report back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase
+          git add data/hungerstation_bulk_price_fix2_9sep_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "Record bulk price-fix batch 2 result" && git push)
