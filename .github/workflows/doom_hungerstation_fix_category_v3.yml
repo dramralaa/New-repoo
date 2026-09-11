@@ -1,7 +1,12 @@
 name: 🏷️ [DOOM] Fix Hungerstation Category v3 (manual, correct mutation)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      proceed_with_full_batch:
+        description: 'اكتب 1 فقط بعد مراجعة canary نظيف صراحةً - يشغّل باقي الدفعة الكاملة بعد الـ3 canary'
+        required: false
+        default: ''
 
 jobs:
   fix:
@@ -26,6 +31,7 @@ jobs:
           HS_TOKEN: ${{ secrets.HS_SESSION_TOKEN }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          PROCEED_WITH_FULL_BATCH: ${{ github.event.inputs.proceed_with_full_batch }}
         run: python hungerstation_fix_category_v3.py
       - name: Commit result back
         if: always()
