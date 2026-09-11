@@ -1,0 +1,27 @@
+# 🔑 الأسرار المطلوبة هنا (موجودة فعلاً): TELEGRAM_TOKEN_DOOM
+#
+# تسجيل رابط الـwebhook الجديد لبوت مقارنة عروض الموردين (docs/api/quote_bot.py)
+# مع تيليجرام - عملية مرة واحدة (أو أي مرة نحتاج نعيد التسجيل بعدها). التوكن نفسه
+# مايعديش أبدًا عبر الشات - بيتقرا من سر GitHub مباشرة جوه الـworkflow.
+name: 🔗 [DOOM] Register Quote Bot Webhook (manual, one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set webhook with Telegram
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+        run: |
+          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN_DOOM}/setWebhook" \
+            -d "url=https://juleb-dashboard.vercel.app/api/quote_bot" \
+            -d "drop_pending_updates=true")
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"ok":true' || (echo "::error::فشل تسجيل الـwebhook" && exit 1)
+      - name: Confirm webhook info
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+        run: curl -s "https://api.telegram.org/bot${TELEGRAM_TOKEN_DOOM}/getWebhookInfo"
