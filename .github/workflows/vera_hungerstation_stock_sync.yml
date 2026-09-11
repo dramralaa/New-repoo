@@ -1,0 +1,43 @@
+# مزامنة حالة التوفر (active) لفيرا على هنجرستيشن - نسخة فيرا من
+# doom_hungerstation_stock_sync.yml بالظبط. أول تفعيل فعلي لكتابة على حساب
+# فيرا الحي (11 سبتمبر 2026) - الافتراضي dry-run (تقرير فقط، صفر PUT فعلي)
+# لحد ما VERA_HS_WRITE_ENABLED تتضاف صراحةً كـ"1" بعد مراجعة تقرير dry-run
+# الأول. فيرا مش ملك لصاحب المشروع (راجع VERA_CONTEXT.md) - أي تفعيل كتابة
+# فعلية يستاهل تأكيد من كريم (مدير فيرا) قبل التفعيل النهائي.
+name: 🔄 [VERA] Hungerstation Stock Sync (كل ساعتين، dry-run افتراضيًا)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 */2 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Sync (dry-run unless VERA_HS_WRITE_ENABLED=1)
+        env:
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+          VERA_HS_WRITE_ENABLED: ${{ secrets.VERA_HS_WRITE_ENABLED }}
+        run: python vera_hungerstation_stock_sync.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vera_hungerstation_stock_sync_last_run.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔄 نتيجة مزامنة رصيد هنجرستيشن فيرا" && git pull --rebase && git push)
