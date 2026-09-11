@@ -1,0 +1,21 @@
+name: Vera Jahez Token Probe (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe VERA_JAHEZ_TOKEN (read-only)
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+        run: python vera_jahez_probe.py

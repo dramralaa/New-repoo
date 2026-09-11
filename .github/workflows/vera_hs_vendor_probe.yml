@@ -1,0 +1,23 @@
+name: Vera HS Vendor ID Probe (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe both candidate vendor IDs
+        env:
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+        run: python vera_hs_vendor_probe.py
