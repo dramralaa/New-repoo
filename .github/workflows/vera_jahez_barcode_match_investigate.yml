@@ -1,0 +1,29 @@
+name: 🔍 [VERA] Jahez SKU-Match Investigation (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Investigate (read-only)
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+        run: python vera_jahez_barcode_match_investigate.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vera_jahez_barcode_match_investigate_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔍 نتيجة تحقيق تطابق sku جاهز فيرا" && git pull --rebase && git push)
