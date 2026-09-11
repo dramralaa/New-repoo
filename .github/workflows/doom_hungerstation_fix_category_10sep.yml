@@ -1,0 +1,32 @@
+name: 🏷️ [DOOM] Fix Hungerstation Category Mismatches (manual, one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout juleb-daily-report (branch)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Fix categories (canary + verified batch write)
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_fix_category_10sep.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_category_fix_result.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🏷️ نتيجة تصحيح تصنيفات هنجرستيشن" && git pull --rebase && git push)
