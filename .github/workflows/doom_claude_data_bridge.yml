@@ -38,6 +38,8 @@ jobs:
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
         run: python jahez_sync_run.py
+      - name: Hungerstation manual-invoice price audit (note-linked orders)
+        run: python hungerstation_invoice_price_audit.py
       - name: Commit & Push
         run: |
           git config user.name "Juleb Bot"
