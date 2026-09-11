@@ -1,0 +1,37 @@
+# مزامنة جاهز/بيك لفيرا - نسخة فيرا من مزامنة جاهز دوم. الافتراضي dry-run
+# (تقرير فقط، صفر كتابة فعلية) لحد ما VERA_JAHEZ_WRITE_ENABLED تتضاف صراحةً
+# كـ"1". فيرا مش ملك لصاحب المشروع (راجع VERA_CONTEXT.md)، وكريم (مدير فيرا)
+# حاليًا في منتصف جرد فرعي النرجس/الروابي (11 سبتمبر 2026) - الكتابة الفعلية
+# ممنوعة تمامًا لحد تأكيده الصريح.
+name: 🔗 [VERA] Jahez Sync (كل ساعتين، dry-run افتراضيًا)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '25 */2 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sync (dry-run unless VERA_JAHEZ_WRITE_ENABLED=1)
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_JAHEZ_WRITE_ENABLED: ${{ secrets.VERA_JAHEZ_WRITE_ENABLED }}
+        run: python vera_jahez_sync.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vera_jahez_sync.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔗 نتيجة مزامنة جاهز فيرا" && git pull --rebase && git push)
