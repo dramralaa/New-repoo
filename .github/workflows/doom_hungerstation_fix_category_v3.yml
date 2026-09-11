@@ -1,11 +1,7 @@
 name: 🏷️ [DOOM] Fix Hungerstation Category v3 (manual, correct mutation)
 
 on:
-  workflow_dispatch:
-    inputs:
-      token:
-        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
-        required: true
+  workflow_dispatch: {}
 
 jobs:
   fix:
@@ -23,7 +19,11 @@ jobs:
       - run: pip install requests
       - name: Fix categories (correct `product` mutation, canary + verified batch)
         env:
-          HS_TOKEN: ${{ github.event.inputs.token }}
+          # ملحوظة أمنية: التوكن ده جلسة حية قصيرة العمر (~4 ساعات) من partner-app.hungerstation.com.
+          # لازم يتحدّث كـ Secret (HS_SESSION_TOKEN) قبل كل تشغيل - ممنوع يتحط كـ workflow_dispatch
+          # input نصي لأن GitHub ما بيعملوش mask تلقائي للـinputs (بيفضل ظاهر في صفحة الـrun)،
+          # عكس الـsecrets اللي بتتخفى تلقائيًا في اللوجز ومفيش مكان بيعرضها كاملة.
+          HS_TOKEN: ${{ secrets.HS_SESSION_TOKEN }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
         run: python hungerstation_fix_category_v3.py
