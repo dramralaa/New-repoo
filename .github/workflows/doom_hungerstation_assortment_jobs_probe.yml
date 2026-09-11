@@ -1,0 +1,44 @@
+# 🔍 سحب سجل "Assortment API" (قائمة jobs التحديث) برمجيًا - قراءة فقط، صفر mutation.
+#
+# ده السجل الوحيد اللي بينسب كل كتابة على الكتالوج لصاحبها - لأن REST Partner API
+# نفسه مفيهوش updated_at ولا updated_by. اتأكد من لقطة شاشة حقيقية (11 سبتمبر) إن
+# السجل بيمسك كتابتنا بالظبط (jobs 07:19 بأحجام 100×8 + 23 = 823، نفس دفعاتنا)،
+# وإن فيه jobs تانية (10:00 و11:00، 3 و7 سجلات) **مش بتاعتنا**.
+#
+# ⚠️ نفس نمط HS_TOKEN المعتمد في هذا الريبو (زي doom_hungerstation_fix_category_v3):
+#    قيمة مؤقتة صلاحيتها ~4 ساعات، بتتمرر كـinput **مش** كسيكريت دائم،
+#    وبتتقنّع بـ::add-mask:: في أول خطوة قبل أي استخدام.
+name: 🔍 [DOOM] Hungerstation Assortment Jobs Probe (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      hs_token:
+        description: 'قيمة HS_TOKEN المؤقتة (من غير كلمة Bearer)'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mask before anything else
+        run: echo "::add-mask::${{ inputs.hs_token }}"
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe the Assortment API job log
+        env:
+          HS_TOKEN: ${{ inputs.hs_token }}
+        run: python hungerstation_assortment_jobs_probe.py
+      - name: Commit findings back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_assortment_jobs.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔍 نتيجة فحص سجل Assortment API" && git pull --rebase && git push)
