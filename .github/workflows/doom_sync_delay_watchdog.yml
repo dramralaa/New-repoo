@@ -1,0 +1,38 @@
+# 🔑 الأسرار المطلوبة هنا (موجودة فعلاً): CROSS_REPO_TOKEN, TELEGRAM_TOKEN_DOOM,
+# TELEGRAM_CHAT_ID_DOOM
+#
+# 🚨 12 سبتمبر 2026 - طلب صريح من صاحب المشروع: تنبيه فوري لو أي مزامنة (هنجرستيشن/
+# جاهز - دوم/فيرا) اتأخرت عن الوتيرة المتوقعة. بيتشغّل بنفس تردد المزامنة السريعة
+# تقريبًا (كل 15 دقيقة نهارًا) عشان يلحق يكتشف أي تأخير بسرعة معقولة.
+name: 🚨 [DOOM] Sync Delay Watchdog
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 6-22 * * *'
+    - cron: '15 23,1,3,5 * * *'
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Check sync delays
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: python sync_delay_watchdog.py
+      - name: Commit alert-state back
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/sync_delay_alert_state.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🚨 تحديث حالة تنبيهات تأخير المزامنة" && git pull --rebase && git push)
