@@ -53,9 +53,31 @@ jobs:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
           TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
         run: python sync_delay_watchdog.py
+      # 🐛 12 سبتمبر 2026 - data/sync_delay_alert_state.json مشترك مع
+      # doom_fast_price_stock_sync.yml (الاتنين بيكتبوا عليه) - راجع نفس الملحوظة
+      # هناك. لو اتشغّلوا قريب من بعض، الـpush ممكن يتصادم والنتيجة كلها تضيع من
+      # غير ما توصل للريبو - إعادة محاولة بدل محاولة وحيدة بتفشل بصمت.
       - name: Commit result back
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/hungerstation_stock_sync_last_run.json data/hungerstation_our_writes_log.json data/sync_delay_alert_state.json
-          git diff --cached --quiet && echo "No changes" || (git commit -m "🔄 نتيجة مزامنة رصيد هنجرستيشن + فحص التأخير" && git pull --rebase && git push)
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "🔄 نتيجة مزامنة رصيد هنجرستيشن + فحص التأخير"
+            for i in 1 2 3 4 5; do
+              if git push; then
+                echo "Push succeeded"
+                break
+              fi
+              echo "Push attempt $i failed - retrying after rebase"
+              git fetch origin main
+              if ! git rebase origin/main; then
+                git checkout --theirs data/sync_delay_alert_state.json 2>/dev/null || true
+                git add data/sync_delay_alert_state.json
+                git rebase --continue || git rebase --abort
+              fi
+              sleep $((i * 3))
+            done
+          fi

@@ -69,9 +69,36 @@ jobs:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
           TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
         run: python sync_delay_watchdog.py
+      # 🐛 12 سبتمبر 2026 - data/sync_delay_alert_state.json بقى مشترك بين هذا الـ
+      # workflow و doom_hungerstation_stock_sync.yml (الاتنين بيكتبوا عليه). لو
+      # اتشغّلوا قريب من بعض، الـpush ممكن يتصادم (rebase conflict) والنتيجة
+      # كلها (بما فيها jahez_sync.json الصحيح) تضيع من غير ما توصل للريبو - ده
+      # فعليًا حصل وسبب "مزامنة نجحت لكن البيانات فضلت قديمة". الحل: إعادة محاولة
+      # (fetch + rebase + push) بدل محاولة وحيدة بتفشل بصمت.
       - name: Commit result back
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/products.json data/stock_balance.json data/jahez_sync.json data/sync_delay_alert_state.json
-          git diff --cached --quiet && echo "No changes" || (git commit -m "⚡ نتيجة المزامنة السريعة (جاهز + رصيد جوليب) + فحص التأخير" && git pull --rebase && git push)
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "⚡ نتيجة المزامنة السريعة (جاهز + رصيد جوليب) + فحص التأخير"
+            for i in 1 2 3 4 5; do
+              if git push; then
+                echo "Push succeeded"
+                break
+              fi
+              echo "Push attempt $i failed - retrying after rebase"
+              git fetch origin main
+              if ! git rebase origin/main; then
+                # تعارض على الأغلب في sync_delay_alert_state.json بس (ملف تتبّع
+                # تنبيهات بسيط - مش حرج نفقد آخر نسخة منه) - ناخد نسخة الريموت
+                # ونكمل، بدون ما نضيّع باقي نتيجة المزامنة (jahez_sync.json...).
+                git checkout --theirs data/sync_delay_alert_state.json 2>/dev/null || true
+                git add data/sync_delay_alert_state.json
+                git rebase --continue || git rebase --abort
+              fi
+              sleep $((i * 3))
+            done
+          fi
