@@ -1,0 +1,34 @@
+# 📦 12 سبتمبر 2026 - تصدير الماستر الكامل الحالي على هنجرستيشن (كود/اسم/سعر/
+# الحالة/الكاتيجوري لكل صنف) + قائمة كل الفئات المتاحة، بطلب صاحب المشروع
+# لمراجعة مشكلة الكاتيجوري المستمرة. قراءة فقط - صفر أي كتابة/mutation.
+name: 📦 [DOOM] Export Hungerstation Master Catalog (manual, read-only)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pandas openpyxl
+      - name: Export master catalog + categories list
+        env:
+          HS_TOKEN: ${{ secrets.HS_SESSION_TOKEN }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+        run: python hungerstation_export_master_catalog.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_master_catalog_export.xlsx
+          git diff --cached --quiet && echo "No changes" || (git commit -m "📦 تصدير ماستر كتالوج هنجرستيشن للمراجعة" && git pull --rebase && git push)
