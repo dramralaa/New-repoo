@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - run: pip install pytz
+      - run: pip install pytz requests
       - name: Refresh products.json + stock_balance.json (خفيف - استعلامين بس)
         env:
           JULEB_URL: ${{ secrets.JULEB_URL }}
@@ -51,9 +51,20 @@ jobs:
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
         run: python jahez_sync_run.py
+      # 🚨 12 سبتمبر 2026 - نُقل فحص تأخير المزامنة هنا من workflow مستقل (كان
+      # عنده cron خاص به بنفس التردد) بعد ما اكتشفنا إن الـwatchdog نفسه كان
+      # بيفوّت تشغيلاته أكتر من أي workflow تاني - على الأغلب بسبب تكدّس عدد كبير
+      # من الـworkflows المجدولة كل 15 دقيقة في نفس الريبو مع بعض (تزاحم على
+      # GitHub Actions scheduler). تشغيله كخطوة هنا بدل cron منفصل بيقلل عدد
+      # الجدولات المتزاحمة، وبيضمن إن الفحص بيحصل فورًا بعد أي تشغيلة ناجحة فعلية.
+      - name: Check sync delays (كل المنصات)
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: python sync_delay_watchdog.py
       - name: Commit result back
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/products.json data/stock_balance.json data/jahez_sync.json
-          git diff --cached --quiet && echo "No changes" || (git commit -m "⚡ نتيجة المزامنة السريعة (جاهز + رصيد جوليب)" && git pull --rebase && git push)
+          git add data/products.json data/stock_balance.json data/jahez_sync.json data/sync_delay_alert_state.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "⚡ نتيجة المزامنة السريعة (جاهز + رصيد جوليب) + فحص التأخير" && git pull --rebase && git push)
