@@ -1,0 +1,33 @@
+# 🔄 12 سبتمبر 2026 - الداشبورد التجريبي (doom_trial_report) بينتشر على Streamlit
+# Cloud من فرع claude/assortment-webhook-discovery-a4mxc6 (مش main) - راجع
+# PROJECT_CONTEXT.md لتفاصيل الاكتشاف. كل أتمتة المزامنة (هنجرستيشن/جاهز) بتعمل
+# commit على main بس، فأي صفحة في التقرير التجريبي بتعرض بيانات حية (زي حالة
+# التحديث) كانت بتفضل عالقة على وقت آخر merge يدوي - ساعات كتير من التأخير.
+#
+# الحل: دمج main تلقائيًا في الفرع ده كل 15 دقيقة (merge بسيط، صفر تعارضات
+# متوقعة لأن الفرع ده مالوش تعديلات خاصة بيه غير صفحات doom_trial_report نفسها).
+name: 🔄 [DOOM] Sync Trial Report Branch with main
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout deployed branch
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - name: Merge main and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات الداشبورد التجريبي)" || (echo "::error::تعارض دمج - محتاج تدخّل يدوي" && exit 1)
+          git push origin claude/assortment-webhook-discovery-a4mxc6
