@@ -1,7 +1,14 @@
 # 🔑 الأسرار المطلوبة هنا (نفس القيم الموجودة في juleb-daily-report):
-# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS,
-# JAHEZ_TOKEN (اختياري), JAHEZ_STORE_ID (اختياري), JAHEZ_WRITE_ENABLED (اختياري)
-name: 🤖 [DOOM] Claude Data Bridge (كل ساعتين)
+# CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS
+#
+# ⚡ 12 سبتمبر 2026: مزامنة جاهز (jahez_sync_run.py) وتصدير products.json/
+# stock_balance.json اتنقلوا لمسار سريع مستقل (doom_fast_price_stock_sync.yml -
+# كل 15 دقيقة نهارًا) عشان تحديث الأسعار/الأرصدة يبقى سريع من غير ما نحمّل جوليب
+# بتكرار نفس الاستعلامات هنا كمان. الملف ده فضل بس للاستعلامات الأتقل اللي مفيش
+# داعي تسريعها (إيصالات/سكراب/أرشيف مبيعات/نشاط منصات التوصيل...) على جدولتها
+# القديمة - claude_data_bridge.py بيقرأ products/stock من القرص (آخر نسخة من
+# المسار السريع) بدل ما يعيد استعلامهم من جوليب.
+name: 🤖 [DOOM] Claude Data Bridge (كل ساعتين - بيانات ثانوية بطيئة)
 
 on:
   workflow_dispatch:
@@ -33,12 +40,6 @@ jobs:
         run: python claude_data_bridge.py
       - name: Build Financial Dashboard Data
         run: python build_financial_dashboard_data.py
-      - name: Jahez Sync (detect + report + optional write-back)
-        env:
-          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
-          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
-          JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
-        run: python jahez_sync_run.py
       - name: Hungerstation manual-invoice price audit (note-linked orders)
         run: python hungerstation_invoice_price_audit.py
       - name: Commit & Push
