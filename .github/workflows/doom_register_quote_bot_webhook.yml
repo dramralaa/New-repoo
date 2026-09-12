@@ -39,3 +39,23 @@ jobs:
         run: |
           TOKEN="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
           curl -sS "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
+      - name: تشخيص - مقارنة هوية بوت TELEGRAM_TOKEN_DOOM مع TELEGRAM_TOKEN العادي
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          T1="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          T2="$(printf '%s' "$TELEGRAM_TOKEN" | tr -d '[:space:]')"
+          echo "🤖 هوية بوت TELEGRAM_TOKEN_DOOM (اللي البوت مسجّل عليه):"
+          curl -sS "https://api.telegram.org/bot${T1}/getMe" | python3 -c "import json,sys; d=json.load(sys.stdin)['result']; print('   username: @' + d['username'], '| id:', d['id'])"
+          if [ -n "$T2" ]; then
+            echo "🤖 هوية بوت TELEGRAM_TOKEN (المستخدم في تنبيهات هنجرستيشن/جاهز):"
+            curl -sS "https://api.telegram.org/bot${T2}/getMe" | python3 -c "import json,sys; d=json.load(sys.stdin)['result']; print('   username: @' + d['username'], '| id:', d['id'])"
+            if [ "$T1" = "$T2" ]; then
+              echo "✅ نفس التوكن بالظبط - بوت واحد."
+            else
+              echo "⚠️ توكنين مختلفين - لو الـusername مختلف يبقى فعلاً 2 بوت منفصلين."
+            fi
+          else
+            echo "ℹ️ TELEGRAM_TOKEN مش موجود كسر في New-repoo."
+          fi
