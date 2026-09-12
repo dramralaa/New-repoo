@@ -16,12 +16,26 @@ jobs:
         env:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN_DOOM}/setWebhook" \
+          # تنظيف أي مسافات/أسطر زيادة ممكن تكون اتلصقت بالتوكن (سبب شائع لـ
+          # curl exit code 3 "URL malformed" - سطر جديد جوه الرابط)
+          TOKEN="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          echo "طول التوكن بعد التنظيف: ${#TOKEN} حرف"
+          set +e
+          RESPONSE=$(curl -sS -X POST "https://api.telegram.org/bot${TOKEN}/setWebhook" \
             -d "url=https://juleb-dashboard.vercel.app/api/quote_bot" \
             -d "drop_pending_updates=true")
+          CURL_EXIT=$?
+          set -e
+          echo "curl exit code: $CURL_EXIT"
           echo "$RESPONSE"
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "::error::فشل استدعاء تيليجرام (curl exit $CURL_EXIT)"
+            exit 1
+          fi
           echo "$RESPONSE" | grep -q '"ok":true' || (echo "::error::فشل تسجيل الـwebhook" && exit 1)
       - name: Confirm webhook info
         env:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
-        run: curl -s "https://api.telegram.org/bot${TELEGRAM_TOKEN_DOOM}/getWebhookInfo"
+        run: |
+          TOKEN="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          curl -sS "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
