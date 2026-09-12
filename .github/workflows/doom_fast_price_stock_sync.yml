@@ -75,18 +75,30 @@ jobs:
       # كلها (بما فيها jahez_sync.json الصحيح) تضيع من غير ما توصل للريبو - ده
       # فعليًا حصل وسبب "مزامنة نجحت لكن البيانات فضلت قديمة". الحل: إعادة محاولة
       # (fetch + rebase + push) بدل محاولة وحيدة بتفشل بصمت.
+      # 🐛🐛 12 سبتمبر 2026 (الجذر الحقيقي - نفس الملحوظة في
+      # doom_hungerstation_stock_sync.yml): "git rebase --continue" بعد حل
+      # التعارض بيحتاج EDITOR، ومفيش EDITOR في GitHub Actions ("Terminal is
+      # dumb, but EDITOR unset") - فكان بيفشل هو نفسه، والسكريبت كان بيعمل
+      # "|| git rebase --abort" فيلغي الـrebase بالكامل (بما فيه الكوميت
+      # المحلي!). كل المحاولات الخمسة كانت بتفشل بنفس الطريقة، والخطوة كانت
+      # بتخلص "success" لأنه مفيش exit فاشل في نهاية اللوب - رغم إن الـpush
+      # ماحصلش خالص. ده كان السبب الحقيقي وراء استمرار المشكلة رغم كل الإصلاحات
+      # التانية. الحل: GIT_EDITOR=true + exit 1 صريح لو الـpush فشل نهائيًا.
       - name: Commit result back
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
           git add data/products.json data/stock_balance.json data/jahez_sync.json data/sync_delay_alert_state.json
           if git diff --cached --quiet; then
             echo "No changes"
           else
             git commit -m "⚡ نتيجة المزامنة السريعة (جاهز + رصيد جوليب) + فحص التأخير"
+            pushed=0
             for i in 1 2 3 4 5; do
               if git push; then
                 echo "Push succeeded"
+                pushed=1
                 break
               fi
               echo "Push attempt $i failed - retrying after rebase"
@@ -101,4 +113,8 @@ jobs:
               fi
               sleep $((i * 3))
             done
+            if [ "$pushed" != "1" ]; then
+              echo "::error::فشل push نتيجة المزامنة نهائيًا بعد 5 محاولات - النتيجة اتحسبت صح بس متوصلتش للريبو"
+              exit 1
+            fi
           fi

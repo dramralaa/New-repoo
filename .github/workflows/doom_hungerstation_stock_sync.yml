@@ -57,18 +57,33 @@ jobs:
       # doom_fast_price_stock_sync.yml (الاتنين بيكتبوا عليه) - راجع نفس الملحوظة
       # هناك. لو اتشغّلوا قريب من بعض، الـpush ممكن يتصادم والنتيجة كلها تضيع من
       # غير ما توصل للريبو - إعادة محاولة بدل محاولة وحيدة بتفشل بصمت.
+      # 🐛🐛 12 سبتمبر 2026 (الجذر الحقيقي اتلقى بعد فحص لوج تشغيلة فعلية فشلت
+      # بصمت): "git rebase --continue" بعد حل التعارض بيحتاج EDITOR عشان يفتح
+      # رسالة الكوميت المعاد تطبيقها - في GitHub Actions مفيش EDITOR أصلًا
+      # ("Terminal is dumb, but EDITOR unset")، فـ"git rebase --continue" كان
+      # بيفشل هو نفسه، والسكريبت كان بيعمل "|| git rebase --abort" فيلغي كل
+      # الـrebase (بما فيه الكوميت المحلي بالكامل!) - يعني كل المحاولات الخمسة
+      # كانت بتفشل بنفس الطريقة بالظبط، والخطوة كانت بتخلص "success" (مفيش أي
+      # exit فاشل في نهاية اللوب) رغم إن الـpush ماحصلش خالص. ده كان السبب
+      # الحقيقي وراء "المزامنة نجحت بس البيانات فضلت قديمة" اللي استمرت رغم كل
+      # الإصلاحات التانية. الحل: GIT_EDITOR=true (محرر وهمي بيقبل الرسالة
+      # الجاهزة من غير ما يفتح حاجة) + exit 1 صريح لو الـpush فشل نهائيًا بعد
+      # كل المحاولات (عشان أي فشل حقيقي مستقبلي يبان في الـActions بدل ما يختفي).
       - name: Commit result back
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
           git add data/hungerstation_stock_sync_last_run.json data/hungerstation_our_writes_log.json data/sync_delay_alert_state.json
           if git diff --cached --quiet; then
             echo "No changes"
           else
             git commit -m "🔄 نتيجة مزامنة رصيد هنجرستيشن + فحص التأخير"
+            pushed=0
             for i in 1 2 3 4 5; do
               if git push; then
                 echo "Push succeeded"
+                pushed=1
                 break
               fi
               echo "Push attempt $i failed - retrying after rebase"
@@ -80,4 +95,8 @@ jobs:
               fi
               sleep $((i * 3))
             done
+            if [ "$pushed" != "1" ]; then
+              echo "::error::فشل push نتيجة المزامنة نهائيًا بعد 5 محاولات - النتيجة اتحسبت صح بس متوصلتش للريبو"
+              exit 1
+            fi
           fi
