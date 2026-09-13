@@ -24,6 +24,16 @@
 # مع GIT_EDITOR=true) في الثلاثة كلهم - مُثبَتة شغالة من فحص حي سابق في نفس
 # اليوم. التكرار ده مقصود ومقبول: لو المحرك القديم (schedule) نجح يشتغل في نفس
 # اللحظة، مفيش ضرر - نتيجة متطابقة، وإعادة المحاولة بتحل أي تعارض عادي.
+#
+# 🗄️ 13 سبتمبر 2026 - إضافة: بناء الكاش اليومي لتقارير "صفحة دوم التجريبية"
+# (doom_trial_report على فرع claude/assortment-webhook-discovery-a4mxc6 في نفس
+# ريبو juleb-daily-report - فرع منفصل عن main، محتاج checkout ثاني مستقل في
+# مجلد فرعي trial_repo/). اتضاف checkout ثاني + خطوة build_trial_cache_once_daily
+# جوه نفس اللوب الموجود، بتشتغل مرة واحدة بس كل يوم تقويمي (بتوقيت الرياض - علامة
+# ملف .last_build_date بتمنع تكرارها كل نص ساعة) وبتـcommit/push نتيجتها
+# (doom_trial_report/data_cache/*.json) لفرعها هي، منفصل تمامًا عن commit/push
+# التطبيق الرئيسي على main. باقي خطوات اللوب (fast price/jahez/hungerstation)
+# فضلت زي ما هي بالظبط، تعمل كل تكرار عادي.
 name: 🔁 [DOOM] Continuous Sync Loop (fast price/jahez + hungerstation + watchdog)
 
 on:
@@ -47,6 +57,17 @@ jobs:
         with:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+      # 🗄️ 13 سبتمبر 2026 - checkout ثاني مستقل لفرع صفحة دوم التجريبية (فرع تاني
+      # تمامًا عن main، نفس الريبو) - في مجلد فرعي trial_repo/ جنب الـcheckout
+      # الأساسي فوق، عشان بناء الكاش اليومي ليها يتم من غير أي تعارض مع تشيك آوت
+      # main العادي (اللي باقي خطوات اللوب شغالة عليه زي ما هي).
+      - name: Checkout doom_trial_report (فرع منفصل)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: trial_repo
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -58,6 +79,13 @@ jobs:
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          # 🗄️ نفس أسرار جوليب بتاعة دوم فوق، بس متسمّاة بـ_DOOM هنا (تسمية env vars
+          # اللي cache_builder.py الجديد بيقرأها - نفس أسلوب aliasing الموجود فعلاً
+          # في doom_gemini_financial_analyst_monthly.yml).
+          JULEB_URL_DOOM: ${{ secrets.JULEB_URL }}
+          JULEB_DB_DOOM: ${{ secrets.JULEB_DB }}
+          JULEB_USER_DOOM: ${{ secrets.JULEB_USER }}
+          JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
@@ -71,10 +99,57 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
+          (cd trial_repo && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com")
 
           START=$(date +%s)
           DURATION=$((340 * 60))
           ITER=0
+
+          # 🗄️ 13 سبتمبر 2026 - بناء الكاش اليومي لتقارير صفحة دوم التجريبية، مرة
+          # واحدة بس كل يوم تقويمي بتوقيت الرياض (علامة .last_build_date بتمنع
+          # التكرار كل نص ساعة زي باقي مزامنات اللوب - بناء الكاش أبطأ نسبيًا).
+          # نفس آلية fetch+rebase+push لـcommit_and_push() تحت، لكن على فرع
+          # trial_repo المنفصل بدل main.
+          build_trial_cache_once_daily() {
+            local today_riyadh
+            today_riyadh=$(TZ=Asia/Riyadh date +%F)
+            local marker="trial_repo/doom_trial_report/data_cache/.last_build_date"
+            if [ -f "$marker" ] && [ "$(cat "$marker")" = "$today_riyadh" ]; then
+              echo "كاش صفحة دوم التجريبية اتبنى خلاص النهاردة ($today_riyadh) - تخطي."
+              return 0
+            fi
+            echo "🗄️ بناء كاش صفحة دوم التجريبية اليومي ($today_riyadh)..."
+            if ! (cd trial_repo/doom_trial_report && python cache_builder.py); then
+              echo "⚠️ فشل بناء كاش صفحة دوم التجريبية في هذه الدورة - هنحاول تاني الدورة الجاية (آخر كاش صالح فضل زي ما هو)"
+              return 0
+            fi
+            mkdir -p "trial_repo/doom_trial_report/data_cache"
+            echo "$today_riyadh" > "$marker"
+            (
+              cd trial_repo || exit 1
+              git add doom_trial_report/data_cache/*.json doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
+              if git diff --cached --quiet; then
+                echo "لا يوجد تغيير فعلي في كاش صفحة دوم التجريبية هذه الدورة."
+                exit 0
+              fi
+              git commit -m "🗄️ تحديث الكاش اليومي لتقارير صفحة دوم التجريبية ($today_riyadh)"
+              for i in 1 2 3 4 5; do
+                if git push; then
+                  echo "✅ Push كاش دوم التجريبية نجح (محاولة $i)"
+                  exit 0
+                fi
+                echo "⚠️ Push كاش دوم التجريبية فشل (محاولة $i) - إعادة محاولة بعد rebase"
+                git fetch origin claude/assortment-webhook-discovery-a4mxc6
+                if ! git rebase origin/claude/assortment-webhook-discovery-a4mxc6; then
+                  git checkout --theirs doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
+                  git add doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
+                  git rebase --continue || git rebase --abort
+                fi
+                sleep $((i * 3))
+              done
+              echo "::error::فشل push كاش دوم التجريبية نهائيًا بعد 5 محاولات - هنكمل باقي اللوب برضه"
+            )
+          }
 
           commit_and_push() {
             git add data/products.json data/stock_balance.json data/jahez_sync.json \
@@ -112,6 +187,7 @@ jobs:
             python sync_delay_watchdog.py || true
 
             commit_and_push
+            build_trial_cache_once_daily
 
             NOW=$(date +%s)
             ELAPSED=$((NOW - START))
