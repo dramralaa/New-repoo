@@ -34,6 +34,23 @@
 # (doom_trial_report/data_cache/*.json) لفرعها هي، منفصل تمامًا عن commit/push
 # التطبيق الرئيسي على main. باقي خطوات اللوب (fast price/jahez/hungerstation)
 # فضلت زي ما هي بالظبط، تعمل كل تكرار عادي.
+#
+# 🔁 13 سبتمبر 2026 (بعد الظهر) - **الجذر الحقيقي لتأخير منصة دوم التجريبية
+# المُبلَّغ عنه (٥٤ دقيقة ثم ٧٥ دقيقة)**: المنصة دي بتتعرض من فرع Streamlit Cloud
+# منفصل عن main، وكانت بتاخد بيانات data/*.json الجديدة بس عن طريق workflow تاني
+# منفصل (doom_trial_report_branch_sync.yml) بيعتمد **حصريًا على GitHub schedule
+# trigger** - نفس محرك الجدولة اللي أثبتنا عدم موثوقيته لباقي الأتمتة في المشروع
+# ده (فحص حي: فجوة حقيقية 9 ساعات و20 دقيقة صفر تشغيلات رغم جدولة كل 15 دقيقة،
+# ثم فجوة تانية أكتر من ساعة). يعني main نفسه كان دايمًا محدَّث (الحلقة المستمرة
+# دي شغالة بثبات كل ~16-30 دقيقة، مؤكَّد بفحص تاريخ الكوميتات) لكن الفرع اللي
+# المنصة بتتعرض منه كان بياخد التحديثات دي متأخر بسبب اعتماده على schedule.
+# الحل: خطوة sync_trial_branch_with_main() جديدة تحت - بتعمل نفس "git merge main"
+# اللي كان بيعملها doom_trial_report_branch_sync.yml، لكن **جوّه نفس الحلقة
+# المستمرة ذاتية التجديد** (بدون أي اعتماد على schedule إطلاقًا) - تشتغل كل دورة
+# عادية (كل ~16-30 دقيقة نهارًا)، مش مرة كل يوم زي بناء الكاش. الـworkflow القديم
+# (doom_trial_report_branch_sync.yml) اتسابت شغالة زي ما هي كمصدر احتياطي إضافي
+# (نفس فلسفة الاحتفاظ بالجدولة القديمة لباقي الأتمتة) - أي دمج مكرر منها غير
+# ضار (idempotent)، لو نجحت قبل الحلقة أو بعدها.
 name: 🔁 [DOOM] Continuous Sync Loop (fast price/jahez + hungerstation + watchdog)
 
 on:
@@ -104,6 +121,34 @@ jobs:
           START=$(date +%s)
           DURATION=$((340 * 60))
           ITER=0
+
+          # 🔁 13 سبتمبر 2026 (بعد الظهر) - دمج main في فرع دوم التجريبية، كل دورة
+          # عادية (مش مرة كل يوم زي بناء الكاش تحت) - ده بديل موثوق لـ
+          # doom_trial_report_branch_sync.yml اللي كان بيعتمد على GitHub schedule
+          # وحده (فجوات حقيقية أثبتناها تعدّي 9 ساعات). صفر تعارضات متوقعة (main
+          # مالوش doom_trial_report/ أصلاً - الفرعين بيلمسوا ملفات مختلفة تمامًا).
+          sync_trial_branch_with_main() {
+            (
+              cd trial_repo || exit 1
+              git fetch origin main
+              if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات الداشبورد التجريبي)"; then
+                echo "⚠️ تعارض دمج حقيقي بين main وفرع دوم التجريبية (غير متوقع حسب التصميم) - إلغاء الدمج والمحاولة تاني الدورة الجاية"
+                git merge --abort || true
+                exit 0
+              fi
+              for i in 1 2 3; do
+                if git push origin claude/assortment-webhook-discovery-a4mxc6; then
+                  echo "✅ دمج main لفرع دوم التجريبية نجح ودفع بنجاح (محاولة $i)"
+                  exit 0
+                fi
+                echo "⚠️ فشل push دمج main لفرع دوم التجريبية (محاولة $i) - إعادة محاولة بعد دمج آخر نسخة من الفرع"
+                git fetch origin claude/assortment-webhook-discovery-a4mxc6
+                git merge origin/claude/assortment-webhook-discovery-a4mxc6 --no-edit || true
+                sleep $((i * 3))
+              done
+              echo "::error::فشل push دمج main لفرع دوم التجريبية نهائيًا بعد 3 محاولات - هنحاول تاني الدورة الجاية"
+            )
+          }
 
           # 🗄️ 13 سبتمبر 2026 - بناء الكاش اليومي لتقارير صفحة دوم التجريبية، مرة
           # واحدة بس كل يوم تقويمي بتوقيت الرياض (علامة .last_build_date بتمنع
@@ -187,6 +232,7 @@ jobs:
             python sync_delay_watchdog.py || true
 
             commit_and_push
+            sync_trial_branch_with_main
             build_trial_cache_once_daily
 
             NOW=$(date +%s)
