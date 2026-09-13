@@ -1,0 +1,145 @@
+# 🔁 13 سبتمبر 2026 - "الحل الجذري" المطلوب صراحة من صاحب المشروع بعد إثبات
+# متكرر (بأدلة مباشرة من GitHub API نفسه) إن GitHub Actions' `schedule:` trigger
+# مش موثوق بيه لهذا الحساب/الريبو: شفنا تشغيلات ناجحة الساعة 06:04-06:12 UTC
+# ثم **صفر تشغيلات** لأكتر من 75 دقيقة بعدها رغم إن الجدولة كل 15 دقيقة (خمس
+# تشغيلات كان المفروض تحصل ومحصلتش). ده نفس النمط اللي شفناه أكتر من مرة طول
+# الجلسة دي - تفريق دقايق الـcron وتقليل عدد الـworkflows المسجّلة قللوا المشكلة
+# لكن محلوهاش. بالمقابل: **كل تشغيلة workflow_dispatch طول الجلسة دي (عشرات
+# التشغيلات) اشتغلت خلال 1-4 ثواني بدون استثناء واحد** - يعني المشكلة تحديدًا في
+# محرك جدولة `schedule:`، مش في GitHub Actions نفسها كمنصة.
+#
+# الحل: workflow واحد طويل التشغيل (job واحد، loop داخلي بـsleep) بيعمل كل
+# المزامنات (fast price/jahez + hungerstation + فحص التأخير) كل ~15 دقيقة نهارًا
+# / ~ساعتين ليلًا **من غير أي اعتماد على GitHub schedule للتكرار** - بيفضل شغال
+# لحد ما يقرب من سقف الـ6 ساعات (الحد الأقصى الصلب لأي job على GitHub-hosted
+# runners)، وقبل ما يخلص بيعمل self-relaunch (workflow_dispatch API call لنفسه)
+# عشان يبدأ نافذة تانية فورًا - سلسلة تشغيلات ذاتية التجديد مش محتاجة schedule
+# غير كـshبكة أمان نادرة جدًا (كل 4 ساعات) لو السلسلة اتقطعت لأي سبب.
+#
+# ⚠️ 13 سبتمبر 2026 - بطلب صريح من صاحب المشروع، جدولة fast_price_stock_sync.yml
+# وhungerstation_stock_sync.yml القديمة **اتسابت شغالة زي ما هي** (مصدر مزامنة
+# إضافي احتياطي، مش اعتماد وحيد) بدل ما تتعطّل - يعني ممكن يحصل كتابة متزامنة
+# على data/sync_delay_alert_state.json المشترك بين التلاتة workflows دلوقتي (مش
+# اتنين بس). ده متعامَل معاه فعليًا بنفس آلية إعادة المحاولة (fetch+rebase+push
+# مع GIT_EDITOR=true) في الثلاثة كلهم - مُثبَتة شغالة من فحص حي سابق في نفس
+# اليوم. التكرار ده مقصود ومقبول: لو المحرك القديم (schedule) نجح يشتغل في نفس
+# اللحظة، مفيش ضرر - نتيجة متطابقة، وإعادة المحاولة بتحل أي تعارض عادي.
+name: 🔁 [DOOM] Continuous Sync Loop (fast price/jahez + hungerstation + watchdog)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # شبكة أمان نادرة بس - لو السلسلة ذاتية التجديد اتقطعت لأي سبب (فشل الـ
+    # self-relaunch نفسه مثلاً)، الـcron النادر ده بيبدأ سلسلة جديدة تلقائيًا.
+    - cron: '0 */4 * * *'
+
+concurrency:
+  group: doom-continuous-sync-loop
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz requests
+      - name: Continuous sync loop (~5.5 ساعة، بيتجدد ذاتيًا بعدها)
+        id: syncloop
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+
+          START=$(date +%s)
+          DURATION=$((340 * 60))
+          ITER=0
+
+          commit_and_push() {
+            git add data/products.json data/stock_balance.json data/jahez_sync.json \
+                    data/hungerstation_stock_sync_last_run.json data/hungerstation_our_writes_log.json \
+                    data/sync_delay_alert_state.json 2>/dev/null || true
+            if git diff --cached --quiet; then
+              echo "لا يوجد تغيير فعلي في هذه الدورة."
+              return 0
+            fi
+            git commit -m "🔁 نتيجة دورة مزامنة مستمرة #$ITER ($(date -u +%H:%M) UTC)"
+            for i in 1 2 3 4 5; do
+              if git push; then
+                echo "✅ Push نجح (دورة $ITER، محاولة $i)"
+                return 0
+              fi
+              echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
+              git fetch origin main
+              if ! git rebase origin/main; then
+                git checkout --theirs data/sync_delay_alert_state.json 2>/dev/null || true
+                git add data/sync_delay_alert_state.json
+                git rebase --continue || git rebase --abort
+              fi
+              sleep $((i * 3))
+            done
+            echo "::error::فشل push دورة $ITER نهائيًا بعد 5 محاولات - هنكمل باقي اللوب برضه"
+          }
+
+          while true; do
+            ITER=$((ITER + 1))
+            echo "════════ دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
+
+            python claude_data_bridge_fast.py || echo "⚠️ claude_data_bridge_fast فشل في هذه الدورة - هنحاول تاني الدورة الجاية"
+            python jahez_sync_run.py || echo "⚠️ jahez_sync_run فشل في هذه الدورة"
+            python hungerstation_stock_sync.py || echo "⚠️ hungerstation_stock_sync فشل في هذه الدورة"
+            python sync_delay_watchdog.py || true
+
+            commit_and_push
+
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START))
+            if [ $ELAPSED -ge $DURATION ]; then
+              echo "انتهت نافذة الـ~5.5 ساعة (${ITER} دورة) - هيتعمل self-relaunch في الخطوة الجاية."
+              break
+            fi
+
+            H=$(date -u +%H)
+            if [ "$H" -ge 23 ] || [ "$H" -lt 6 ]; then
+              SLEEP=7200   # نافذة الليل (2-9 صباحًا الرياض تقريبًا) - كل ساعتين
+            else
+              SLEEP=900    # نهارًا - كل 15 دقيقة
+            fi
+            REMAINING=$((DURATION - ELAPSED))
+            if [ $SLEEP -gt $REMAINING ]; then
+              SLEEP=$REMAINING
+            fi
+            echo "نايم $SLEEP ثانية قبل الدورة الجاية..."
+            sleep $SLEEP
+          done
+      # 🔁 self-relaunch: بغض النظر عن نجاح/فشل اللوب فوق، نبدأ نافذة تانية فورًا
+      # عشان السلسلة تفضل مستمرة من غير أي اعتماد على GitHub schedule.
+      - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
+        if: always()
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_continuous_sync_loop.yml/dispatches" \
+            -d '{"ref":"main"}'
