@@ -9,12 +9,16 @@
 # الرياض (17:05 UTC - 5 دقايق بعد doom_fast_price_stock_sync.yml عمدًا عشان
 # يقل احتمال تصادم الكتابة على data/sync_delay_alert_state.json المشترك، رغم
 # إن آلية إعادة المحاولة بتتعامل معاه أصلًا لو حصل).
-name: 🔄 [DOOM] Hungerstation Stock Sync (احتياطي - مرة يوميًا 8م الرياض)
+#
+# 🗄️ 14 سبتمبر 2026 - **معطّل نهائيًا** بعد بناء `doom_sync_loop_hungerstation.yml`
+# (حلقة معزولة مستقلة، مع timeout + تسجيل خطأ دائم - راجع PROJECT_CONTEXT.md).
+# هذا الملف تحديدًا كان سبب اكتشاف أهمية العزل: تعطّل هنجرستيشن 4.5 ساعة
+# بصمت جوّه الحلقة المشتركة القديمة يوم 13 سبتمبر. الـschedule اتشال، الملف
+# متروك كمرجع تاريخي (workflow_dispatch لسه متاح لتشغيل يدوي طارئ).
+name: 🔄 [DOOM] Hungerstation Stock Sync (معطّل - استُبدل بـdoom_sync_loop_hungerstation.yml)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '5 17 * * *'
 
 jobs:
   sync:

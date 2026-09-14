@@ -20,15 +20,18 @@
 # workflow، ومن غير أي داعي لحل لغز workflow_run: الـschedule وحده كافي لضمان
 # فجوة أقصاها ~15 دقيقة لتحديث الفرع التجريبي. سايبين workflow_run في الملف
 # (مش بيضر لو فضل معطّل - ممكن يشتغل لو GitHub غيّرت سلوكها لاحقًا).
-name: 🔄 [DOOM] Sync Trial Report Branch with main
+# 🗄️ 14 سبتمبر 2026 - **معطّل نهائيًا**. هذا الملف تحديدًا هو الجذر الحقيقي
+# لتأخير منصة دوم التجريبية (54 ثم 75 ثم 114 دقيقة يوم 13 سبتمبر) - كان يعتمد
+# حصريًا على GitHub `schedule` (فجوة حقيقية مؤكَّدة 9 ساعات و20 دقيقة صفر
+# تشغيلات، رغم جدولة كل 15 دقيقة)، و`workflow_run` فوق **لم يعمل ولا مرة
+# واحدة** (موثّق في تعليقات أقدم بهذا الملف). استُبدل بالكامل بـ
+# `doom_sync_loop_trial_platform.yml` (حلقة معزولة ذاتية التجديد، دمج main كل
+# 10 دقائق بدون أي اعتماد على schedule - راجع PROJECT_CONTEXT.md). الـschedule
+# و`workflow_run` اتشالوا، الملف متروك كمرجع تاريخي.
+name: 🔄 [DOOM] Sync Trial Report Branch with main (معطّل - استُبدل بـdoom_sync_loop_trial_platform.yml)
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["⚡ [DOOM] Fast Price/Stock Sync - Jahez (كل ١٥ دقيقة نهارًا، كل ساعتين ليلًا)"]
-    types: [completed]
-  schedule:
-    - cron: '4,19,34,49 6-22 * * *'
 
 jobs:
   sync:

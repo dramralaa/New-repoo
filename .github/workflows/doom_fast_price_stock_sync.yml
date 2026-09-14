@@ -12,12 +12,17 @@
 # بطلب صريح من صاحب المشروع: تشغيلة واحدة يوميًا بس الساعة 8 مساءً بتوقيت
 # الرياض (20:00 الرياض = 17:00 UTC)، بدل الوتيرة المتكررة القديمة اللي بقت
 # زيادة عن الحاجة دلوقتي.
-name: ⚡ [DOOM] Fast Price/Stock Sync - Jahez (احتياطي - مرة يوميًا 8م الرياض)
+#
+# 🗄️ 14 سبتمبر 2026 - **معطّل نهائيًا** بعد بناء `doom_sync_loop_jahez.yml`
+# (حلقة معزولة مستقلة لجاهز فقط، مع timeout + تسجيل خطأ دائم عبر
+# sync_health_recorder.py - راجع PROJECT_CONTEXT.md قسم "بنية الأتمتة") التي
+# تغطي نفس الوظيفة بموثوقية أعلى. الـschedule اتشال بدل ما يفضل مصدر مزامنة
+# مكرر بلا داعٍ. الملف متروك كمرجع تاريخي (workflow_dispatch لسه متاح لو
+# احتجنا تشغيل يدوي طارئ).
+name: ⚡ [DOOM] Fast Price/Stock Sync - Jahez (معطّل - استُبدل بـdoom_sync_loop_jahez.yml)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 17 * * *'
 
 jobs:
   sync:
