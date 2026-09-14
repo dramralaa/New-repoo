@@ -23,6 +23,7 @@ jobs:
         with:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'

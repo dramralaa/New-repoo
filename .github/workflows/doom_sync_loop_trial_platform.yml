@@ -5,6 +5,17 @@
 # غير الموثوق - راجع PROJECT_CONTEXT.md لتفاصيل اكتشاف السبب: فجوة حقيقية 9
 # ساعات و20 دقيقة في جدولة GitHub schedule)، و(2) بناء الكاش اليومي للتقارير
 # الخمس الثقيلة مرة واحدة كل يوم رياضي (cache_builder.py).
+#
+# 🐛 14 سبتمبر 2026 (بعد ساعات من النشر) - **باج حقيقي في أول نسخة**: checkout
+# الفرع هنا كان بدون `fetch-depth: 0` (الافتراضي = شبيه سطحي، آخر كوميت بس) -
+# أي `git merge origin/main` بعد كده كان بيفشل بـ"refusing to merge unrelated
+# histories" (git مايشوفش تاريخ مشترك حقيقي في نسخة سطحية) - **نفس الخطأ
+# بالحرف اللي ظهر قبل كده في الحلقة المشتركة القديمة** (doom_continuous_sync_loop.yml
+# كانت عندها نفس الباج). النتيجة: المنصة التجريبية فضلت واقفة على بيانات
+# الأمس رغم كل الإصلاحات التانية شغالة صح (main نفسه كان محدَّث). الحل: إضافة
+# `fetch-depth: 0` (نفس القيمة المستخدمة في doom_trial_report_branch_sync.yml
+# الأصلي اللي كان بينجح في الدمج فعليًا) - **هذا هو الباج الحقيقي الوحيد في
+# البنية الجديدة، مش مشكلة موثوقية تانية**.
 name: 🔁 [DOOM] Sync Loop - Trial Platform (دمج main + كاش يومي)
 
 on:
@@ -27,6 +38,7 @@ jobs:
           repository: dramralaa/juleb-daily-report
           ref: claude/assortment-webhook-discovery-a4mxc6
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
