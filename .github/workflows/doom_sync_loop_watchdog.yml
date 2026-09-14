@@ -50,10 +50,12 @@ jobs:
             fi
             git commit -m "🔍 مراقبة التأخير - دورة #$ITER ($(date -u +%H:%M) UTC)"
             for i in 1 2 3 4 5; do
-              if git push; then
+              # 🐛 14 سبتمبر 2026 - git push/fetch من غير timeout ممكن يعلّق اللوب كله
+              # للأبد على مشكلة شبكة - راجع doom_sync_loop_juleb_bridge.yml.
+              if timeout 60 git push; then
                 return 0
               fi
-              git fetch origin main
+              timeout 60 git fetch origin main
               if ! git rebase origin/main; then
                 git checkout --theirs data/sync_delay_alert_state.json 2>/dev/null || true
                 git add data/sync_delay_alert_state.json

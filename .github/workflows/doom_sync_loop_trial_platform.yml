@@ -59,19 +59,22 @@ jobs:
           ITER=0
 
           sync_with_main() {
-            git fetch origin main
+            # 🐛 14 سبتمبر 2026 - git fetch/push من غير timeout ممكن يعلّق اللوب كله
+            # للأبد على مشكلة شبكة (اكتُشف حي: حلقتي جسر جوليب وجاهز توقفوا 4.5 ساعة+
+            # بالظبط لهذا السبب - راجع PROJECT_CONTEXT.md).
+            timeout 60 git fetch origin main
             if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات الداشبورد التجريبي)"; then
               echo "⚠️ تعارض دمج حقيقي بين main وفرع دوم التجريبية (غير متوقع حسب التصميم) - إلغاء والمحاولة تاني الدورة الجاية"
               git merge --abort || true
               return 0
             fi
             for i in 1 2 3; do
-              if git push origin claude/assortment-webhook-discovery-a4mxc6; then
+              if timeout 60 git push origin claude/assortment-webhook-discovery-a4mxc6; then
                 echo "✅ دمج main نجح ودُفع بنجاح (محاولة $i)"
                 return 0
               fi
               echo "⚠️ فشل push دمج main (محاولة $i) - إعادة محاولة"
-              git fetch origin claude/assortment-webhook-discovery-a4mxc6
+              timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
               git merge origin/claude/assortment-webhook-discovery-a4mxc6 --no-edit || true
               sleep $((i * 3))
             done
@@ -104,12 +107,12 @@ jobs:
             fi
             git commit -m "🗄️ تحديث الكاش اليومي لتقارير صفحة دوم التجريبية ($today_riyadh)"
             for i in 1 2 3 4 5; do
-              if git push; then
+              if timeout 60 git push; then
                 echo "✅ Push كاش دوم التجريبية نجح (محاولة $i)"
                 return 0
               fi
               echo "⚠️ Push كاش دوم التجريبية فشل (محاولة $i) - إعادة محاولة بعد rebase"
-              git fetch origin claude/assortment-webhook-discovery-a4mxc6
+              timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
               if ! git rebase origin/claude/assortment-webhook-discovery-a4mxc6; then
                 # 🐛 14 سبتمبر 2026 - نفس المبدأ الموثّق في doom_sync_loop_hungerstation.yml:
                 # هذه الحلقة الوحيدة اللي بتكتب ملفات الكاش دي، فالنسخة المحلية الطازجة

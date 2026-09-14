@@ -76,12 +76,14 @@ jobs:
             fi
             git commit -m "🔁 هنجرستيشن - دورة #$ITER ($(date -u +%H:%M) UTC)"
             for i in 1 2 3 4 5; do
-              if git push; then
+              # 🐛 14 سبتمبر 2026 - راجع doom_sync_loop_juleb_bridge.yml: git push/fetch
+              # من غير timeout ممكن يعلّق اللوب كله للأبد على مشكلة شبكة.
+              if timeout 60 git push; then
                 echo "✅ Push نجح (دورة $ITER، محاولة $i)"
                 return 0
               fi
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
-              git fetch origin main
+              timeout 60 git fetch origin main
               if ! git rebase origin/main; then
                 # 🐛 14 سبتمبر 2026 - **هذا هو السبب الحقيقي المكتشف لتأخير هنجرستيشن**:
                 # السكريبت نفسه كان بينجح فعليًا (اتأكَّد من سجل حي: نجح 21:17 UTC بعد فشل

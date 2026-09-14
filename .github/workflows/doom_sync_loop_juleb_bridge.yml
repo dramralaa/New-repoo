@@ -80,12 +80,17 @@ jobs:
             fi
             git commit -m "🔁 جسر جوليب - دورة #$ITER ($(date -u +%H:%M) UTC)"
             for i in 1 2 3 4 5; do
-              if git push; then
+              # 🐛 14 سبتمبر 2026 - اكتُشف حي: أوامر git push/fetch من غير timeout ممكن
+              # تعلّق للأبد على أي مشكلة شبكة (عكس استدعاءات بايثون اللي كانت متغلّفة
+              # بـtimeout من الأول) - ده سبب توقّف حلقة كاملة لساعات (٤.٥ ساعة+) من غير
+              # أي محاولة تانية تسجّل، وحتى الـself-relaunch مايشتغلش لأن اللوب عالق
+              # داخل دورة واحدة أصلاً. أي أمر git بيتواصل مع الريموت لازم timeout صريح.
+              if timeout 60 git push; then
                 echo "✅ Push نجح (دورة $ITER، محاولة $i)"
                 return 0
               fi
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
-              git fetch origin main
+              timeout 60 git fetch origin main
               if ! git rebase origin/main; then
                 # 🐛 14 سبتمبر 2026 - اكتُشف حي: تعارض حقيقي على ملفات البيانات (مش بس
                 # ملف التنبيهات المشترك) بيوقف الـrebase تمامًا وتضيع نتيجة الدورة كلها
