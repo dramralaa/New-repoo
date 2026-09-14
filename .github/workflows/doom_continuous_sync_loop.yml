@@ -51,14 +51,19 @@
 # (doom_trial_report_branch_sync.yml) اتسابت شغالة زي ما هي كمصدر احتياطي إضافي
 # (نفس فلسفة الاحتفاظ بالجدولة القديمة لباقي الأتمتة) - أي دمج مكرر منها غير
 # ضار (idempotent)، لو نجحت قبل الحلقة أو بعدها.
-name: 🔁 [DOOM] Continuous Sync Loop (fast price/jahez + hungerstation + watchdog)
+# 🗄️ 14 سبتمبر 2026 - **معطّلة نهائيًا**. استُبدلت بالكامل بأربع حلقات معزولة
+# مستقلة (doom_sync_loop_juleb_bridge.yml، doom_sync_loop_jahez.yml،
+# doom_sync_loop_hungerstation.yml، doom_sync_loop_trial_platform.yml) +
+# حلقة مراقبة منفصلة (doom_sync_loop_watchdog.yml) - راجع PROJECT_CONTEXT.md
+# قسم "بنية الأتمتة" لتفاصيل السبب (تعطّل هنجرستيشن 4.5 ساعة بصمت جوّه هذه
+# الحلقة المشتركة يوم 13 سبتمبر، بلا أي تأثير ظاهر على باقي الحلقة، واستحال
+# تشخيصه إلا بعد ساعات). الـschedule وخطوة self-relaunch اتشالوا هنا عمدًا -
+# التشغيلة النشطة وقت التبديل اتلغيت يدويًا بعد التأكد إن الحلقات الجديدة
+# شغالة فعليًا (صفر فجوة تغطية). الملف متروك كمرجع تاريخي فقط.
+name: 🔁 [DOOM] Continuous Sync Loop (معطّلة - استُبدلت بـ4 حلقات معزولة، راجع PROJECT_CONTEXT.md)
 
 on:
   workflow_dispatch:
-  schedule:
-    # شبكة أمان نادرة بس - لو السلسلة ذاتية التجديد اتقطعت لأي سبب (فشل الـ
-    # self-relaunch نفسه مثلاً)، الـcron النادر ده بيبدأ سلسلة جديدة تلقائيًا.
-    - cron: '0 */4 * * *'
 
 concurrency:
   group: doom-continuous-sync-loop
@@ -256,13 +261,6 @@ jobs:
             echo "نايم $SLEEP ثانية قبل الدورة الجاية..."
             sleep $SLEEP
           done
-      # 🔁 self-relaunch: بغض النظر عن نجاح/فشل اللوب فوق، نبدأ نافذة تانية فورًا
-      # عشان السلسلة تفضل مستمرة من غير أي اعتماد على GitHub schedule.
-      - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
-        if: always()
-        run: |
-          curl -sS -X POST \
-            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_continuous_sync_loop.yml/dispatches" \
-            -d '{"ref":"main"}'
+      # 🗄️ 14 سبتمبر 2026 - خطوة self-relaunch اتشالت نهائيًا (كانت هنا تعيد
+      # تشغيل هذه الحلقة كل ~5.5 ساعة) - الحلقة دي معطّلة بالكامل، استُبدلت
+      # بأربع حلقات معزولة (راجع تعليق أعلى الملف + PROJECT_CONTEXT.md).
