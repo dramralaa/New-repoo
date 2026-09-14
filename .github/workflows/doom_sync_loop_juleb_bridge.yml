@@ -85,7 +85,16 @@ jobs:
               fi
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
               git fetch origin main
-              git rebase origin/main || git rebase --abort
+              if ! git rebase origin/main; then
+                # 🐛 14 سبتمبر 2026 - اكتُشف حي: تعارض حقيقي على ملفات البيانات (مش بس
+                # ملف التنبيهات المشترك) بيوقف الـrebase تمامًا وتضيع نتيجة الدورة كلها
+                # بصمت بعد 5 محاولات فاشلة (حادثة هنجرستيشن 13 سبتمبر). هذه الحلقة الوحيد
+                # اللي بيكتب على الملفات دي فعليًا، فالنسخة المحلية (--theirs في rebase =
+                # الكوميت المحلي، عكس merge) هي الصحيحة دايمًا - نفس منطق sync_delay_alert_state.json.
+                git checkout --theirs data/products.json data/stock_balance.json data/health/juleb_bridge.json 2>/dev/null || true
+                git add data/products.json data/stock_balance.json data/health/juleb_bridge.json 2>/dev/null || true
+                git rebase --continue || git rebase --abort
+              fi
               sleep $((i * 3))
             done
             echo "::error::فشل push دورة $ITER نهائيًا بعد 5 محاولات - هنكمل باقي اللوب برضه"

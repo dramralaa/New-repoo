@@ -99,8 +99,12 @@ jobs:
               echo "⚠️ Push كاش دوم التجريبية فشل (محاولة $i) - إعادة محاولة بعد rebase"
               git fetch origin claude/assortment-webhook-discovery-a4mxc6
               if ! git rebase origin/claude/assortment-webhook-discovery-a4mxc6; then
-                git checkout --theirs doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
-                git add doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
+                # 🐛 14 سبتمبر 2026 - نفس المبدأ الموثّق في doom_sync_loop_hungerstation.yml:
+                # هذه الحلقة الوحيدة اللي بتكتب ملفات الكاش دي، فالنسخة المحلية الطازجة
+                # (--theirs في rebase = الكوميت المحلي) صحيحة دايمًا - نطبّقها على ملفات
+                # الكاش الفعلية كمان، مش بس ملف العلامة.
+                git checkout --theirs doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
+                git add doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))

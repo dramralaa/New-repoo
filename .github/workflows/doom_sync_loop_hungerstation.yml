@@ -81,7 +81,20 @@ jobs:
               fi
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
               git fetch origin main
-              git rebase origin/main || git rebase --abort
+              if ! git rebase origin/main; then
+                # 🐛 14 سبتمبر 2026 - **هذا هو السبب الحقيقي المكتشف لتأخير هنجرستيشن**:
+                # السكريبت نفسه كان بينجح فعليًا (اتأكَّد من سجل حي: نجح 21:17 UTC بعد فشل
+                # واحد فقط 20:45 بسبب 500 مؤقت من سيرفر هنجرستيشن نفسه - راجع
+                # PROJECT_CONTEXT.md) لكن نتيجة النجاح دي **ضاعت بصمت** لأن الـrebase بعدها
+                # واجه تعارض حقيقي على ملفات البيانات (مش بس ملف التنبيهات) وفشل 5 محاولات
+                # كاملة. هذه الحلقة الوحيدة اللي بتكتب الملفات دي، فالنسخة المحلية الطازجة
+                # (--theirs في rebase = الكوميت المحلي، عكس merge) صحيحة دايمًا.
+                git checkout --theirs data/hungerstation_stock_sync_last_run.json \
+                        data/hungerstation_our_writes_log.json data/health/hungerstation.json 2>/dev/null || true
+                git add data/hungerstation_stock_sync_last_run.json data/hungerstation_our_writes_log.json \
+                        data/health/hungerstation.json 2>/dev/null || true
+                git rebase --continue || git rebase --abort
+              fi
               sleep $((i * 3))
             done
             echo "::error::فشل push دورة $ITER نهائيًا بعد 5 محاولات - هنكمل باقي اللوب برضه"
