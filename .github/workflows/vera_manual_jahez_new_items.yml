@@ -26,11 +26,19 @@ jobs:
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           fetch-depth: 0
       - name: Checkout doom-product-images (لمطابقة الصور - Public، بدون توكن)
+        # ⚠️ 16 سبتمبر 2026 - checkout كامل للريبو ده بطيء جدًا (+3GB فعليًا -
+        # فيه hungerstation_orphaned_harvest/ وحده 2.9GB مش محتاجينه هنا خالص).
+        # sparse-checkout يجيب بس by_juleb_code/ (مطابقة دوم بالباركود) و
+        # raw_vera_import/ (مانيفست فيرا) - اللي فعليًا مستخدمين في المطابقة.
         uses: actions/checkout@v4
         with:
           repository: dramralaa/doom-product-images
           path: doom-product-images
           fetch-depth: 1
+          sparse-checkout: |
+            by_juleb_code
+            raw_vera_import
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
