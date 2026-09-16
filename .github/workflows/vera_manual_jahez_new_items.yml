@@ -1,0 +1,75 @@
+# 🆕 16 سبتمبر 2026 - أداة يدوية عند الطلب (مش حلقة مستمرة، مفيش schedule ولا
+# self-relaunch) - نسخة فيرا من doom_manual_jahez_ready_upload.yml. 3 خطوات
+# بالترتيب: (1) إصلاح صور أصناف حية فقدت صورتها بعد PUT سعر (vera_jahez_fix_missing_images.py)،
+# (2) بناء ماستر فيرا الشامل (vera_jahez_build_master_catalog.py - يحتاج كتالوج
+# جاهز فيرا الحي + صور doom-product-images)، (3) رفع الأصناف الجاهزة فعليًا
+# (باركود + صورة مطابقة، مش دواء افتراضيًا) عبر vera_jahez_upload_ready_batch.py.
+name: 📤 [VERA] رفع يدوي - إصلاح صور + أصناف جاهز الجاهزة
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_medicine:
+        description: 'تضمين الدواء في الرفع؟ (افتراضيًا لا - محتاج تأكيد صريح)'
+        required: false
+        default: 'false'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - name: Checkout doom-product-images (لمطابقة الصور - Public، بدون توكن)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/doom-product-images
+          path: doom-product-images
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run vera_jahez_fix_missing_images.py
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+        run: python3 vera_jahez_fix_missing_images.py
+      - name: Run vera_jahez_build_master_catalog.py
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
+        run: python3 vera_jahez_build_master_catalog.py
+      - name: Run vera_jahez_upload_ready_batch.py
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_JAHEZ_INCLUDE_MEDICINE: ${{ github.event.inputs.include_medicine == 'true' && '1' || '' }}
+        run: python3 vera_jahez_upload_ready_batch.py
+      - name: Commit and push result files
+        if: always()
+        run: |
+          git config user.name "3PI Automation"
+          git config user.email "automation@3pi.local"
+          git add data/vera_master_catalog.json data/vera_jahez_ready_batch_result.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير في ملفات النتيجة."
+            exit 0
+          fi
+          git commit -m "📤 نتيجة رفع دفعة أصناف جاهز فيرا الجاهزة (يدوي) + ماستر شامل"
+          for i in 1 2 3; do
+            if timeout 60 git push; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            git merge origin/main --no-edit || true
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push سجل نتيجة الرفع بعد 3 محاولات"
