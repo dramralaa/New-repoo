@@ -2,8 +2,15 @@
 # self-relaunch) - نسخة فيرا من doom_manual_jahez_ready_upload.yml. 3 خطوات
 # بالترتيب: (1) إصلاح صور أصناف حية فقدت صورتها بعد PUT سعر (vera_jahez_fix_missing_images.py)،
 # (2) بناء ماستر فيرا الشامل (vera_jahez_build_master_catalog.py - يحتاج كتالوج
-# جاهز فيرا الحي + صور doom-product-images)، (3) رفع الأصناف الجاهزة فعليًا
-# (باركود + صورة مطابقة، مش دواء افتراضيًا) عبر vera_jahez_upload_ready_batch.py.
+# جاهز فيرا الحي)، (3) رفع الأصناف الجاهزة فعليًا (باركود + صورة مطابقة، مش
+# دواء افتراضيًا) عبر vera_jahez_upload_ready_batch.py.
+#
+# ⚠️ 16 سبتمبر 2026 - **مفيش checkout لـdoom-product-images هنا خالص** (جُرِّب
+# فعليًا: checkout حتى sparse بياخد +5 دقايق لأن git لازم يفتّرش الـpack الكامل
+# عبر الشبكة الأول قبل ما يطبّق أي sparse filter على الـworking tree - الريبو
+# ده +3GB). البديل الأخف: السكريبتات بتفحص وجود الصور عبر GitHub Git Trees API
+# (JSON أسماء ملفات بس) أو HEAD مباشر على raw.githubusercontent.com، وتحميل
+# الصورة الفعلي وقت الرفع بيحصل عبر raw.githubusercontent.com مباشرة كمان.
 name: 📤 [VERA] رفع يدوي - إصلاح صور + أصناف جاهز الجاهزة
 
 on:
@@ -25,20 +32,6 @@ jobs:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           fetch-depth: 0
-      - name: Checkout doom-product-images (لمطابقة الصور - Public، بدون توكن)
-        # ⚠️ 16 سبتمبر 2026 - checkout كامل للريبو ده بطيء جدًا (+3GB فعليًا -
-        # فيه hungerstation_orphaned_harvest/ وحده 2.9GB مش محتاجينه هنا خالص).
-        # sparse-checkout يجيب بس by_juleb_code/ (مطابقة دوم بالباركود) و
-        # raw_vera_import/ (مانيفست فيرا) - اللي فعليًا مستخدمين في المطابقة.
-        uses: actions/checkout@v4
-        with:
-          repository: dramralaa/doom-product-images
-          path: doom-product-images
-          fetch-depth: 1
-          sparse-checkout: |
-            by_juleb_code
-            raw_vera_import
-          sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -47,13 +40,11 @@ jobs:
         env:
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
-          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
         run: python3 vera_jahez_fix_missing_images.py
       - name: Run vera_jahez_build_master_catalog.py
         env:
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
-          IMAGES_REPO_PATH: ${{ github.workspace }}/doom-product-images
         run: python3 vera_jahez_build_master_catalog.py
       - name: Run vera_jahez_upload_ready_batch.py
         env:
