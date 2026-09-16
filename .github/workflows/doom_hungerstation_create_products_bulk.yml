@@ -34,6 +34,7 @@ jobs:
         with:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -50,6 +51,26 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
           git add data/hungerstation_create_products_result*.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "Hungerstation CreateProductsBulk result"
-          git push https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git HEAD:main
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير في ملف النتيجة."
+            exit 0
+          fi
+          git commit -m "Hungerstation CreateProductsBulk result"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              echo "✅ Push نجح (محاولة $i)"
+              exit 0
+            fi
+            echo "⚠️ Push فشل (محاولة $i) - إعادة محاولة بعد rebase"
+            timeout 60 git fetch origin main
+            if ! git rebase origin/main; then
+              git checkout --theirs data/hungerstation_create_products_result*.json 2>/dev/null || true
+              git add data/hungerstation_create_products_result*.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push نتيجة الرفع بعد 5 محاولات"
