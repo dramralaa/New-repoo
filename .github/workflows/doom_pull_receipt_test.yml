@@ -1,0 +1,34 @@
+# 🧪 16 سبتمبر 2026 - تشغيلة يدوية لمرة واحدة (هتتشال بعد الاستخدام): اختبار
+# سحب طلبية استلام (stock.picking) عبر Odoo XML-RPC بغض النظر عن حالتها - عشان
+# نثبت إن ده ممكن حتى لو واجهة جوليب نفسها مفيهاش زرار تصدير لأي حالة.
+name: 🧪 [DOOM] اختبار سحب طلبية استلام قبل الاعتماد
+
+on:
+  workflow_dispatch:
+    inputs:
+      picking_name:
+        description: 'اسم الطلبية (زي WH/IN/00227) - أو فاضي = آخر 5 طلبيات استلام'
+        required: false
+        default: ''
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Pull receipt data
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          PICKING_NAME: ${{ github.event.inputs.picking_name }}
+        run: python doom_pull_receipt_pre_confirm.py
