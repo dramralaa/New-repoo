@@ -1,0 +1,25 @@
+# 🔎 16 سبتمبر 2026 - تشخيص لمرة واحدة (هيتشال بعد الاستخدام): هل Partner API v2
+# GET /catalog بيرجع باركود لكل صنف؟ محتاجينها لبناء مطابقة احتياطية بالباركود.
+name: 🔎 [VERA] فحص حقول كتالوج هنجرستيشن (تشخيص لمرة واحدة)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run probe
+        env:
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+        run: python vera_hs_catalog_field_probe.py
