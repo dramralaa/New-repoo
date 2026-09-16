@@ -1,0 +1,41 @@
+# 📦 أداة إنتاجية دائمة (مش لمرة واحدة): سحب طلبية استلام دوم أو كل الطلبيات
+# المعلّقة (لسه مش Done) كملف Excel - حل لعدم وجود زرار تصدير في جوليب. النتيجة
+# بتترفع كـartifact قابل للتحميل (مش commit - ملف مؤقت لكل تشغيلة).
+name: 📦 [DOOM] سحب جرد طلبية استلام (Excel)
+
+on:
+  workflow_dispatch:
+    inputs:
+      picking_name:
+        description: 'اسم طلبية معيّنة (زي WH/IN/00227) - أو فاضي = كل طلبيات الاستلام المعلّقة (لسه مش Done)'
+        required: false
+        default: ''
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pandas openpyxl
+      - name: Pull receipt inventory
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          PICKING_NAME: ${{ github.event.inputs.picking_name }}
+        run: python doom_pull_receipt_inventory.py
+      - name: Upload Excel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-inventory-pull
+          path: receipt_inventory_pull.xlsx
+          retention-days: 14
