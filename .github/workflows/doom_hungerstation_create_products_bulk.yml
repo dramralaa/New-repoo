@@ -1,10 +1,9 @@
-# Create real products directly on the Hungerstation vendor store (186329) via
-# CreateProductsBulk - closes the 3000-item catalog-depth gap Hungerstation
-# requires before allowing the branch to go live, without waiting on Juleb.
-# Items are real (barcode + category come from Hungerstation's own global
-# master catalog), not placeholder junk. Token comes in as a short-lived
-# workflow_dispatch input only, never stored. Fully manual, no schedule.
-# Required secret: CROSS_REPO_TOKEN.
+# ⚠️ 16 سبتمبر 2026 - ريبو ده Public: اتشال أي معرّف/سياق عمل حقيقي من هنا.
+# التفاصيل التشغيلية الكاملة موجودة بس في الريبو الخاص المقابل.
+#
+# Creates real products on Hungerstation via CreateProductsBulk. Token comes in
+# as a short-lived workflow_dispatch input only, never stored. Fully manual,
+# no schedule. Required secret: CROSS_REPO_TOKEN.
 name: HS Create Products Bulk (manual)
 
 on:
