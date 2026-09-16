@@ -63,7 +63,8 @@ jobs:
 
           commit_and_push() {
             git add data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
-                    data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
+                    data/vera_delivery_audit.json data/health/vera_hungerstation.json \
+                    data/health/vera_hungerstation_price.json data/health/vera_delivery_audit.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -78,9 +79,11 @@ jobs:
               timeout 60 git fetch origin main
               if ! git rebase origin/main; then
                 git checkout --theirs data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
-                        data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
+                        data/vera_delivery_audit.json data/health/vera_hungerstation.json \
+                        data/health/vera_hungerstation_price.json data/health/vera_delivery_audit.json 2>/dev/null || true
                 git add data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
-                        data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
+                        data/vera_delivery_audit.json data/health/vera_hungerstation.json \
+                        data/health/vera_hungerstation_price.json data/health/vera_delivery_audit.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -95,6 +98,8 @@ jobs:
             run_with_health vera_hungerstation vera_hungerstation_stock_sync.py 180
             # فحص سعر فقط؛ VERA_HS_PRICE_WRITE_ENABLED غير مفعّل هنا، فلا PUT للأسعار.
             run_with_health vera_hungerstation_price vera_hungerstation_price_sync.py 300
+            # تقرير تحقق موحد، قراءة ملفات النتائج فقط؛ لا كتابة على أي منصة.
+            run_with_health vera_delivery_audit vera_delivery_audit.py 60
 
             commit_and_push
 
