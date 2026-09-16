@@ -64,10 +64,16 @@ jobs:
             # للأبد على مشكلة شبكة (اكتُشف حي: حلقتي جسر جوليب وجاهز توقفوا 4.5 ساعة+
             # بالظبط لهذا السبب - راجع PROJECT_CONTEXT.md).
             timeout 60 git fetch origin main
-            if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات الداشبورد التجريبي)"; then
-              echo "⚠️ تعارض دمج حقيقي بين main وفرع دوم التجريبية (غير متوقع حسب التصميم) - إلغاء والمحاولة تاني الدورة الجاية"
+            if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات منصة MPC)"; then
+              # فرع MPC هو فرع نشر فقط؛ main هو المصدر المعتمد للبيانات والكود.
+              # حل التعارض هنا يمنع بقاء المنصة على بيانات قديمة إلى ما لا نهاية.
+              echo "⚠️ تعارض دمج - إعادة المحاولة مع اعتماد نسخة main للملفات المتعارضة"
               git merge --abort || true
-              return 0
+              if ! git merge -X theirs origin/main --no-edit -m "🔄 استعادة تطابق منصة MPC مع main"; then
+                echo "::error::فشل دمج main في فرع MPC حتى بعد حل التعارض"
+                git merge --abort || true
+                return 1
+              fi
             fi
             for i in 1 2 3; do
               if timeout 60 git push origin claude/assortment-webhook-discovery-a4mxc6; then
