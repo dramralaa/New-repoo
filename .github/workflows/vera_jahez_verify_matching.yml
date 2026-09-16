@@ -1,0 +1,59 @@
+# 🧪 16 سبتمبر 2026 - تشغيلة يدوية لمرة واحدة (هتتشال بعد الاستخدام): تشغيل
+# فوري لمزامنة جاهز فيرا بعد إصلاح مطابقة الباركود/GTIN (jahez_sync_engine.py)
+# - بدون انتظار الحلقة المستمرة الحالية (لسه شغّالة بكود قديم من قبل الإصلاح).
+# concurrency group منفصل تمامًا عن vera-sync-loop-jahez عشان ميتقفلش وراها.
+name: 🧪 [VERA] تحقق فوري من إصلاح مطابقة جاهز
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: vera-jahez-verify-once
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run vera_jahez_sync.py once
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_JAHEZ_WRITE_ENABLED: ${{ secrets.VERA_JAHEZ_WRITE_ENABLED }}
+        run: python vera_jahez_sync.py
+      - name: Commit and push result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/vera_jahez_sync.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير."
+            exit 0
+          fi
+          git commit -m "🔗 نتيجة تحقق فوري من إصلاح مطابقة جاهز فيرا"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            if ! git rebase origin/main; then
+              git checkout --theirs data/vera_jahez_sync.json 2>/dev/null || true
+              git add data/vera_jahez_sync.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push نتيجة التحقق بعد 5 محاولات"
