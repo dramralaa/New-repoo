@@ -1,10 +1,20 @@
 # 🔁 14 سبتمبر 2026 - حلقة مزامنة مستقلة تمامًا لصفحة دوم التجريبية (فرع
 # Streamlit Cloud منفصل: claude/assortment-webhook-discovery-a4mxc6) - راجع
 # doom_sync_loop_juleb_bridge.yml لشرح فلسفة العزل الكاملة بين التكاملات.
-# مسؤوليتها: (1) دمج main في فرع المنصة كل دورة (بديل doom_trial_report_branch_sync.yml
+# مسؤوليتها الوحيدة: دمج main في فرع المنصة كل دورة (بديل doom_trial_report_branch_sync.yml
 # غير الموثوق - راجع PROJECT_CONTEXT.md لتفاصيل اكتشاف السبب: فجوة حقيقية 9
-# ساعات و20 دقيقة في جدولة GitHub schedule)، و(2) بناء الكاش اليومي للتقارير
-# الخمس الثقيلة مرة واحدة كل يوم رياضي (cache_builder.py).
+# ساعات و20 دقيقة في جدولة GitHub schedule).
+#
+# 🔀 16 سبتمبر 2026 - بناء الكاش اليومي (cache_builder.py) اتفصل عن الحلقة دي
+# بالكامل ونقل لـ doom_daily_cache_guaranteed.yml (جدولة مباشرة قريب من منتصف
+# ليل الرياض، مستقلة تمامًا عن صحة الحلقة دي وعن self-relaunch). السبب: صاحب
+# المشروع طلب ضمان صريح إن الكاش يتحدث بحد أقصى 00:30 وميتأخرش عن 01:00 بتوقيت
+# الرياض - الاعتماد على تشيك كل 10 دقايق جوه حلقة بتتجدد ذاتيًا كل ~5.5 ساعة
+# مايضمنش ده: لو الـ self-relaunch فشل (طلب curl ماتأكدش نجاحه) بالظبط قبل
+# منتصف الليل، أقرب فرصة تانية كانت جدولة fallback هذه الحلقة نفسها (`40 */4 * * *`
+# UTC = 03:40 بتوقيت الرياض) - بعد الديدلاين بساعتين وأربعين دقيقة. فصل المسؤولية
+# لـworkflow مخصص وقصير (يبدأ ويخلص، مش حلقة طويلة) بجدولة UTC مباشرة قريبة من
+# 00:00 الرياض بيشيل الاعتماد على استمرارية الحلقة دي خالص.
 #
 # 🐛 14 سبتمبر 2026 (بعد ساعات من النشر) - **باج حقيقي في أول نسخة**: checkout
 # الفرع هنا كان بدون `fetch-depth: 0` (الافتراضي = شبيه سطحي، آخر كوميت بس) -
@@ -16,7 +26,7 @@
 # `fetch-depth: 0` (نفس القيمة المستخدمة في doom_trial_report_branch_sync.yml
 # الأصلي اللي كان بينجح في الدمج فعليًا) - **هذا هو الباج الحقيقي الوحيد في
 # البنية الجديدة، مش مشكلة موثوقية تانية**.
-name: 🔁 [DOOM] Sync Loop - Trial Platform (دمج main + كاش يومي)
+name: 🔁 [DOOM] Sync Loop - Trial Platform (دمج main)
 
 on:
   workflow_dispatch:
@@ -39,16 +49,7 @@ jobs:
           ref: claude/assortment-webhook-discovery-a4mxc6
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - run: pip install pytz requests
       - name: Continuous sync loop (~5.5 ساعة، بيتجدد ذاتيًا بعدها)
-        env:
-          JULEB_URL_DOOM: ${{ secrets.JULEB_URL }}
-          JULEB_DB_DOOM: ${{ secrets.JULEB_DB }}
-          JULEB_USER_DOOM: ${{ secrets.JULEB_USER }}
-          JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -81,58 +82,11 @@ jobs:
             echo "::error::فشل push دمج main نهائيًا بعد 3 محاولات - هنحاول تاني الدورة الجاية"
           }
 
-          build_cache_once_daily() {
-            local today_riyadh
-            today_riyadh=$(TZ=Asia/Riyadh date +%F)
-            local marker="doom_trial_report/data_cache/.last_build_date"
-            if [ -f "$marker" ] && [ "$(cat "$marker")" = "$today_riyadh" ]; then
-              echo "كاش صفحة دوم التجريبية اتبنى خلاص النهاردة ($today_riyadh) - تخطي."
-              return 0
-            fi
-            echo "🗄️ بناء كاش صفحة دوم التجريبية اليومي ($today_riyadh)..."
-            local outfile="/tmp/trial_cache_output.log"
-            (cd doom_trial_report && timeout 300 python cache_builder.py) > "$outfile" 2>&1
-            local code=$?
-            if [ $code -ne 0 ]; then
-              echo "⚠️ فشل بناء كاش صفحة دوم التجريبية (exit=$code) - آخر 30 سطر:"
-              tail -30 "$outfile"
-              return 0
-            fi
-            tail -10 "$outfile"
-            echo "$today_riyadh" > "$marker"
-            git add doom_trial_report/data_cache/*.json doom_trial_report/data_cache/.last_build_date 2>/dev/null || true
-            if git diff --cached --quiet; then
-              echo "لا يوجد تغيير فعلي في كاش صفحة دوم التجريبية هذه الدورة."
-              return 0
-            fi
-            git commit -m "🗄️ تحديث الكاش اليومي لتقارير صفحة دوم التجريبية ($today_riyadh)"
-            for i in 1 2 3 4 5; do
-              if timeout 60 git push; then
-                echo "✅ Push كاش دوم التجريبية نجح (محاولة $i)"
-                return 0
-              fi
-              echo "⚠️ Push كاش دوم التجريبية فشل (محاولة $i) - إعادة محاولة بعد rebase"
-              timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
-              if ! git rebase origin/claude/assortment-webhook-discovery-a4mxc6; then
-                # 🐛 14 سبتمبر 2026 - نفس المبدأ الموثّق في doom_sync_loop_hungerstation.yml:
-                # هذه الحلقة الوحيدة اللي بتكتب ملفات الكاش دي، فالنسخة المحلية الطازجة
-                # (--theirs في rebase = الكوميت المحلي) صحيحة دايمًا - نطبّقها على ملفات
-                # الكاش الفعلية كمان، مش بس ملف العلامة.
-                git checkout --theirs doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
-                git add doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
-                git rebase --continue || git rebase --abort
-              fi
-              sleep $((i * 3))
-            done
-            echo "::error::فشل push كاش دوم التجريبية نهائيًا بعد 5 محاولات - هنحاول تاني الدورة الجاية"
-          }
-
           while true; do
             ITER=$((ITER + 1))
             echo "════════ منصة دوم التجريبية - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             sync_with_main
-            build_cache_once_daily
 
             NOW=$(date +%s)
             ELAPSED=$((NOW - START))

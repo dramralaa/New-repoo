@@ -1,0 +1,102 @@
+# 🆕 16 سبتمبر 2026 - workflow مخصص لضمان تحديث الكاش اليومي للتقارير الخمس
+# الثقيلة (cache_builder.py) بحد أقصى 00:30 وميتأخرش أبدًا عن 01:00 بتوقيت
+# الرياض - طلب صريح من صاحب المشروع. كان بناء الكاش ده جزء من
+# doom_sync_loop_trial_platform.yml (حلقة طويلة بتتجدد ذاتيًا كل ~5.5 ساعة،
+# بتشيك كل 10 دقايق) - ده مش ضمان حقيقي: لو الـ self-relaunch فشل بالظبط قبل
+# منتصف الليل، أقرب fallback كانت جدولة الحلقة نفسها (`40 */4 * * *` UTC =
+# 03:40 الرياض) - بعد الديدلاين بساعتين وأربعين دقيقة، وده فعليًا سبب ظهور
+# "محدّث حتى تاريخ أمس" متأخر أحيانًا في صفحة Monthly Forecast.
+#
+# التصميم هنا مختلف عمدًا: workflow قصير (يبدأ ويخلص، مش حلقة) بثلاث جدولات
+# UTC ثابتة قريبة من منتصف ليل الرياض (لا تعتمد على أي حلقة تانية شغالة أو لأ):
+#   - 21:05 UTC = 00:05 الرياض  → المحاولة الأساسية (الكاش بيتبني في دقايق قليلة)
+#   - 21:20 UTC = 00:20 الرياض  → شبكة احتياطية لو الأولى فشلت (Juleb مؤقتًا واقع مثلًا)
+#   - 21:45 UTC = 00:45 الرياض  → آخر فرصة قبل ديدلاين 01:00 مباشرة
+# كل تشغيلة بتتحقق أول حاجة من علامة `.last_build_date` - لو الكاش اتبنى
+# خلاص النهاردة (بتوقيت الرياض)، بتخرج فورًا من غير ما تعمل أي حاجة (نفس
+# منطق `build_cache_once_daily()` الأصلي بالظبط) - يعني التشغيلتين الاحتياطيتين
+# مجانيتين تمامًا في اليوم العادي وبيتفعّلوا بس لو الأولى فشلت فعليًا.
+name: 📊 [DOOM] كاش يومي مضمون - تقارير دوم التجريبية الثقيلة
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 21 * * *'    # 00:05 الرياض
+    - cron: '20 21 * * *'   # 00:20 الرياض
+    - cron: '45 21 * * *'   # 00:45 الرياض (آخر فرصة قبل ديدلاين 01:00)
+
+concurrency:
+  group: doom-daily-cache-guaranteed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout doom_trial_report (فرع منفصل)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Build + push daily cache (مرة واحدة فعليًا في اليوم - الباقي no-op)
+        env:
+          JULEB_URL_DOOM: ${{ secrets.JULEB_URL }}
+          JULEB_DB_DOOM: ${{ secrets.JULEB_DB }}
+          JULEB_USER_DOOM: ${{ secrets.JULEB_USER }}
+          JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+
+          TODAY_RIYADH=$(TZ=Asia/Riyadh date +%F)
+          MARKER="doom_trial_report/data_cache/.last_build_date"
+          if [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$TODAY_RIYADH" ]; then
+            echo "كاش صفحة دوم التجريبية اتبنى خلاص النهاردة ($TODAY_RIYADH) - تخطي (no-op)."
+            exit 0
+          fi
+
+          echo "🗄️ بناء كاش صفحة دوم التجريبية اليومي ($TODAY_RIYADH)..."
+          OUTFILE="/tmp/trial_cache_output.log"
+          (cd doom_trial_report && timeout 300 python cache_builder.py) > "$OUTFILE" 2>&1
+          CODE=$?
+          if [ $CODE -ne 0 ]; then
+            echo "::error::فشل بناء كاش صفحة دوم التجريبية (exit=$CODE) - آخر 30 سطر:"
+            tail -30 "$OUTFILE"
+            exit 1
+          fi
+          tail -10 "$OUTFILE"
+          echo "$TODAY_RIYADH" > "$MARKER"
+
+          git add doom_trial_report/data_cache/*.json doom_trial_report/data_cache/.last_build_date
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير فعلي في ملفات الكاش هذه التشغيلة."
+            exit 0
+          fi
+          git commit -m "🗄️ تحديث الكاش اليومي لتقارير صفحة دوم التجريبية ($TODAY_RIYADH)"
+
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push; then
+              echo "✅ Push كاش دوم التجريبية نجح (محاولة $i)"
+              exit 0
+            fi
+            echo "⚠️ Push كاش دوم التجريبية فشل (محاولة $i) - إعادة محاولة بعد rebase"
+            timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
+            if ! git rebase origin/claude/assortment-webhook-discovery-a4mxc6; then
+              # هذا الـworkflow الوحيد اللي بيكتب ملفات الكاش دي، فالنسخة المحلية
+              # الطازجة (--theirs = الكوميت المحلي) صحيحة دايمًا.
+              git checkout --theirs doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
+              git add doom_trial_report/data_cache/.last_build_date doom_trial_report/data_cache/*.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push كاش دوم التجريبية نهائيًا بعد 5 محاولات"
+          exit 1
