@@ -47,8 +47,8 @@ jobs:
           run_with_health() {
             local name="$1" script="$2" timeout_sec="$3"
             local outfile="/tmp/${name}_output.log"
-            timeout "$timeout_sec" python "$script" > "$outfile" 2>&1
-            local code=$?
+            local code=0
+            timeout "$timeout_sec" python "$script" > "$outfile" 2>&1 || code=$?
             if [ $code -eq 0 ]; then
               tail -5 "$outfile"
             else
@@ -86,7 +86,7 @@ jobs:
             ITER=$((ITER + 1))
             echo "════════ جاهز فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
-            run_with_health vera_jahez vera_jahez_sync.py 180
+            run_with_health vera_jahez vera_jahez_sync.py 300
 
             commit_and_push
 

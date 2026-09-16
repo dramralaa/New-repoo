@@ -50,8 +50,8 @@ jobs:
           run_with_health() {
             local name="$1" script="$2" timeout_sec="$3"
             local outfile="/tmp/${name}_output.log"
-            timeout "$timeout_sec" python "$script" > "$outfile" 2>&1
-            local code=$?
+            local code=0
+            timeout "$timeout_sec" python "$script" > "$outfile" 2>&1 || code=$?
             if [ $code -eq 0 ]; then
               tail -5 "$outfile"
             else
