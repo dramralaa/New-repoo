@@ -8,7 +8,7 @@ name: 🔁 [VERA] Sync Loop - Hungerstation (رصيد)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '35 */4 * * *'
+    - cron: '35 * * * *'
 
 concurrency:
   group: vera-sync-loop-hungerstation
@@ -62,7 +62,8 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/vera_hungerstation_stock_sync_last_run.json data/health/vera_hungerstation.json 2>/dev/null || true
+            git add data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
+                    data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -76,8 +77,10 @@ jobs:
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
               timeout 60 git fetch origin main
               if ! git rebase origin/main; then
-                git checkout --theirs data/vera_hungerstation_stock_sync_last_run.json data/health/vera_hungerstation.json 2>/dev/null || true
-                git add data/vera_hungerstation_stock_sync_last_run.json data/health/vera_hungerstation.json 2>/dev/null || true
+                git checkout --theirs data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
+                        data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
+                git add data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
+                        data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -90,6 +93,8 @@ jobs:
             echo "════════ هنجرستيشن فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health vera_hungerstation vera_hungerstation_stock_sync.py 180
+            # فحص سعر فقط؛ VERA_HS_PRICE_WRITE_ENABLED غير مفعّل هنا، فلا PUT للأسعار.
+            run_with_health vera_hungerstation_price vera_hungerstation_price_sync.py 300
 
             commit_and_push
 
@@ -102,7 +107,7 @@ jobs:
 
             H=$(date -u +%H)
             if [ "$H" -ge 23 ] || [ "$H" -lt 6 ]; then
-              SLEEP=7200
+              SLEEP=3600
             else
               SLEEP=1800
             fi
