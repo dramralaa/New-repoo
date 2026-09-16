@@ -9,7 +9,7 @@ name: 🔁 [VERA] Sync Loop - Jahez (أسعار/أرصدة)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '5 */4 * * *'
+    - cron: '5 * * * *'
 
 concurrency:
   group: vera-sync-loop-jahez
@@ -99,7 +99,7 @@ jobs:
 
             H=$(date -u +%H)
             if [ "$H" -ge 23 ] || [ "$H" -lt 6 ]; then
-              SLEEP=7200
+              SLEEP=3600
             else
               SLEEP=1800
             fi
