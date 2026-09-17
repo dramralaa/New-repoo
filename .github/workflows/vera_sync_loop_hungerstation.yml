@@ -63,8 +63,9 @@ jobs:
 
           commit_and_push() {
             git add data/vera_hungerstation_stock_sync_last_run.json data/vera_hungerstation_price_sync.json \
-                    data/vera_delivery_audit.json data/health/vera_hungerstation.json \
-                    data/health/vera_hungerstation_price.json data/health/vera_delivery_audit.json 2>/dev/null || true
+                    data/vera_delivery_audit.json data/vera_hungerstation_price_canary.json \
+                    data/health/vera_hungerstation.json data/health/vera_hungerstation_price.json \
+                    data/health/vera_delivery_audit.json data/health/vera_hungerstation_price_canary.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -100,6 +101,8 @@ jobs:
             run_with_health vera_hungerstation_price vera_hungerstation_price_sync.py 300
             # تقرير تحقق موحد، قراءة ملفات النتائج فقط؛ لا كتابة على أي منصة.
             run_with_health vera_delivery_audit vera_delivery_audit.py 60
+            # Canary واحد معتمد: 10 أصناف SKU مباشرة لكل فرع، وmarker يمنع أي تكرار.
+            run_with_health vera_hungerstation_price_canary vera_hungerstation_price_canary.py 300
 
             commit_and_push
 
