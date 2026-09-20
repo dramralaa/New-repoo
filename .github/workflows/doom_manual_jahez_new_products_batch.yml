@@ -1,0 +1,63 @@
+# 📤 20 سبتمبر 2026 - أداة يدوية عند الطلب: رفع دفعة جديدة من أصناف دوم
+# "الجاهزة فعليًا" (باركود + صورة معتمدة، مش حي على جاهز) لأول مرة، بعد حصاد
+# 2152 صورة جديدة بالباركود من كتالوج هنجرستيشن العالمي. 3 خطوات بالترتيب:
+# (1) سحب كتالوج جاهز الحي، (2) إعادة بناء الماستر الشامل (has_image بقى بيتقرا
+# عبر GitHub Git Trees API - صفر checkout لـdoom-product-images، +3GB)،
+# (3) رفع الأصناف الجاهزة فعليًا (يحترم استبعادات RX/GLP-1 الدائمة تلقائيًا).
+name: 📤 [DOOM] رفع دفعة جديدة - أصناف جاهز الجاهزة (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run jahez_dump_live_catalog.py
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python3 jahez_dump_live_catalog.py
+      - name: Run jahez_build_master_catalog.py
+        run: python3 jahez_build_master_catalog.py
+      - name: Run jahez_upload_ready_batch.py
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: |
+          git config user.name "3PI Automation"
+          git config user.email "automation@3pi.local"
+          python3 jahez_upload_ready_batch.py
+      - name: Commit and push result log
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/jahez_live_catalog.json data/master_catalog.json data/jahez_ready_batch_result.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير."
+            exit 0
+          fi
+          git commit -m "📤 نتيجة رفع دفعة جديدة أصناف جاهز الجاهزة"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            git rebase origin/main || git rebase --abort
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push نتيجة الرفع بعد 5 محاولات"
