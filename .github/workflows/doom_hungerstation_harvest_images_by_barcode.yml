@@ -1,0 +1,69 @@
+# 📥 20 سبتمبر 2026 - أداة يدوية عند الطلب (مش حلقة مستمرة) - حصاد صور دوم من
+# كتالوج هنجرستيشن العالمي بالباركود بس (صفر تخمين اسم، بديل أدق من
+# hungerstation_match_and_fetch_images.py). محتاج توكن جلسة بورتال هنجرستيشن
+# مؤقت (HS_TOKEN) - مش متاح كـsecret دائم، بييجي كـinput.
+#
+# ⚠️ مفيش checkout لـdoom-product-images هنا خالص (+3GB، +5 دقايق حتى sparse -
+# راجع vera_manual_jahez_new_items.yml) - الصور بترفع مباشرة عبر GitHub
+# Contents API من جوّه السكريبت نفسه.
+name: 📥 [DOOM] حصاد صور من هنجرستيشن بالباركود (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
+        required: true
+      vendor_id:
+        description: 'HungerStation platformVendorId (المصدر - أي فرع، الكتالوج العالمي نفسه لكل الفروع)'
+        required: false
+        default: '186329'
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Harvest images by barcode
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+          HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
+          GITHUB_IMAGES_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python hungerstation_harvest_images_by_barcode.py
+      - name: Commit and push result log
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير في ملف النتيجة."
+            exit 0
+          fi
+          git commit -m "📥 نتيجة حصاد صور دوم بالباركود من هنجرستيشن"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            if ! git rebase origin/main; then
+              git checkout --theirs data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
+              git add data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push نتيجة الحصاد بعد 5 محاولات"
