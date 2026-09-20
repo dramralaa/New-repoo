@@ -1,0 +1,47 @@
+# 🔔 20 سبتمبر 2026 - حلقة مراقبة طلبات جاهز اللحظية (بديل صوت تبويب المنصة).
+# بداية محافظة بنصيحة ChatGPT (رُوجعت واتفق عليها): كل ~90 ثانية بس، مش أسرع،
+# لحد ما نتأكد إن جاهز مش بيحظر التكرار (Cloudflare بيحظر توقيعات بوت واضحة).
+# بتنشر ملف حالة آمن تمامًا (بدون بيانات عميل) في هذا الريبو العام نفسه عبر
+# GitHub Contents API - صفحة المراقبة (Artifact منفصل) بتقرأه بـfetch عادي.
+name: 🔔 [DOOM] Order Watch Loop - جاهز (لحظي)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '10 */6 * * *'
+
+concurrency:
+  group: doom-order-watch-loop
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Continuous order watch (~5.5 ساعة، بيتجدد ذاتيًا بعدها)
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          CROSS_REPO_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          WATCH_INTERVAL_SEC: '90'
+          WATCH_DURATION_MIN: '330'
+        run: python jahez_order_watch.py
+      - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
+        if: always()
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_order_watch_loop.yml/dispatches" \
+            -d '{"ref":"main"}'
