@@ -59,7 +59,7 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/jahez_sync.json data/health/jahez.json 2>/dev/null || true
+            git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -80,8 +80,8 @@ jobs:
                 # تعارض حقيقي على ملفات هذه الحلقة نفسها (مش بس ملف التنبيهات) كان بيوقف
                 # الـrebase ويضيّع نتيجة الدورة بصمت. هذه الحلقة الوحيدة اللي بتكتب الملفات
                 # دي، فالنسخة المحلية الطازجة (--theirs في rebase = الكوميت المحلي) صحيحة دايمًا.
-                git checkout --theirs data/jahez_sync.json data/health/jahez.json 2>/dev/null || true
-                git add data/jahez_sync.json data/health/jahez.json 2>/dev/null || true
+                git checkout --theirs data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json 2>/dev/null || true
+                git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
