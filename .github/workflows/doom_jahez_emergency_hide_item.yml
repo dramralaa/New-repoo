@@ -26,7 +26,7 @@ jobs:
         env:
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
-        run: python jahez_emergency_hide_item.py
+        run: python jahez_emergency_hide_batch.py
       - name: Commit and push result
         if: always()
         run: |
@@ -34,10 +34,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          git add data/jahez_emergency_hide_result.json 2>/dev/null || true
+          git add data/jahez_emergency_hide_batch_result.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "لا يوجد تغيير."
             exit 0
           fi
-          git commit -m "🚨 نتيجة إخفاء طارئ - Rybelsus"
+          git commit -m "🚨 نتيجة إخفاء طارئ - دفعة أصناف وصفة طبية"
           timeout 60 git push origin HEAD:main || (timeout 60 git fetch origin main && git rebase origin/main && timeout 60 git push origin HEAD:main)
