@@ -1,0 +1,60 @@
+# 🔎 تشخيصي لمرة واحدة (20 سبتمبر 2026) - تقرير الأصناف المستبعدة دائمًا من
+# منصات التوصيل واللي عندها رصيد حقيقي دلوقتي في دوم. يُحذف بعد الاستخدام.
+name: 🔎 [DOOM] تقرير الأصناف الممنوعة اللي ليها رصيد (تشخيصي - مرة واحدة)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run report
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python doom_banned_items_stock_report.py
+      - name: Commit and push result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/doom_banned_items_stock_report.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير."
+            exit 0
+          fi
+          git commit -m "🔎 نتيجة تقرير الأصناف الممنوعة اللي ليها رصيد"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            if ! git rebase origin/main; then
+              git checkout --theirs data/doom_banned_items_stock_report.json 2>/dev/null || true
+              git add data/doom_banned_items_stock_report.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push النتيجة بعد 5 محاولات"
