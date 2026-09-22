@@ -1,0 +1,50 @@
+# 🔍 22 سبتمبر 2026 - فحص حي (قراءة فقط) لكتالوج فيرا على جاهز وهنجرستيشن:
+# تكرار الأصناف على جاهز (بلاغ د. كريم) + الأسماء الإنجليزي فقط على هنجرستيشن.
+# مفيش أي كتابة على المنصات - بيكتب ملفات نتيجة في juleb-daily-report بس.
+name: 🔍 [VERA] فحص كتالوج جاهز وهنجرستيشن (يدوي، قراءة فقط)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run audit
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+        run: python vera_platform_catalog_audit.py
+      - name: Commit and push result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير."
+            exit 0
+          fi
+          git commit -m "🔍 نتيجة فحص كتالوج فيرا الحي (جاهز + هنجرستيشن)"
+          for i in 1 2 3 4 5; do
+            timeout 60 git push origin HEAD:main && exit 0
+            timeout 60 git fetch origin main && git rebase origin/main
+            sleep $((i * 3))
+          done
+          exit 1
