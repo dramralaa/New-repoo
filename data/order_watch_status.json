@@ -1,18 +1,17 @@
 {
- "generated_at_utc": "2026-09-22T13:38:38.402953+00:00",
+ "generated_at_utc": "2026-09-22T13:41:12.469520+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "دوم 1 - النسيم",
-   "last_check_utc": "2026-09-22T13:38:38.402953+00:00",
+   "last_check_utc": "2026-09-22T13:41:12.469520+00:00",
    "last_check_ok": true,
    "alerts": []
   },
   "2": {
    "label": "دوم 2 - ظهرة لبن",
-   "last_check_utc": "2026-09-22T13:38:38.402953+00:00",
-   "last_check_ok": false,
-   "error": "GET https://api.pik.sa/portal/stores/8856/orders?orderStatusId=0&tableKey=1&branchId=12922&page=1&pageCount=20 → The read operation timed out",
+   "last_check_utc": "2026-09-22T13:41:12.469520+00:00",
+   "last_check_ok": true,
    "alerts": []
   }
  },
