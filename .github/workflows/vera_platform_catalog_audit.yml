@@ -36,15 +36,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          git add data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "لا يوجد تغيير."
-            exit 0
-          fi
-          git commit -m "🔍 نتيجة فحص كتالوج فيرا الحي (جاهز + هنجرستيشن)"
+          FILES="data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json"
+          mkdir -p /tmp/out && for f in $FILES; do [ -f "$f" ] && cp "$f" /tmp/out/; done
+          # الملفات دي بيكتبها الفحص ده بس، فأحدث نسخة بتكسب دايمًا: نرجع على آخر main
+          # ونحط الناتج فوقه بدل rebase (اللي كان بيتعارض لو تشغيلتين كتبوا ورا بعض).
           for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            for f in $FILES; do [ -f "/tmp/out/$(basename $f)" ] && cp "/tmp/out/$(basename $f)" "$f"; done
+            git add $FILES 2>/dev/null || true
+            if git diff --cached --quiet; then echo "لا يوجد تغيير."; exit 0; fi
+            git commit -q -m "🔍 نتيجة فحص كتالوج فيرا الحي (جاهز + هنجرستيشن)"
             timeout 60 git push origin HEAD:main && exit 0
-            timeout 60 git fetch origin main && git rebase origin/main
             sleep $((i * 3))
           done
           exit 1
