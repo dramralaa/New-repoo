@@ -36,7 +36,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          FILES="data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json"
+          FILES="data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json data/vera_hs_live_catalog.json"
           mkdir -p /tmp/out && for f in $FILES; do [ -f "$f" ] && cp "$f" /tmp/out/; done
           # الملفات دي بيكتبها الفحص ده بس، فأحدث نسخة بتكسب دايمًا: نرجع على آخر main
           # ونحط الناتج فوقه بدل rebase (اللي كان بيتعارض لو تشغيلتين كتبوا ورا بعض).
