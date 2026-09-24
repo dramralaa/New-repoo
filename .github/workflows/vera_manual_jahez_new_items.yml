@@ -24,7 +24,7 @@ on:
 jobs:
   upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     steps:
       - name: Checkout juleb-daily-report
         uses: actions/checkout@v4

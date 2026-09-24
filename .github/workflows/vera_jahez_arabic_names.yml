@@ -1,0 +1,53 @@
+# 🔤 24 سبتمبر 2026 - تصحيح الاسم العربي على جاهز فيرا (بموافقة صاحب المشروع).
+# كتابة فعلية: arabicName بس (باقي الحقول بتتنقل زي ما هي وبتتحقق). قابل للرجوع بـrollback=1.
+name: 🔤 [VERA] تصحيح الأسماء العربي على جاهز (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: "1 = رجّع الأسماء القديمة"
+        required: false
+        default: "0"
+
+jobs:
+  names:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Fix Arabic names
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          ROLLBACK: ${{ github.event.inputs.rollback }}
+        run: python vera_jahez_arabic_names.py
+      - name: Commit and push result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/vera_jahez_arabic_names_result.json
+          [ -f "$F" ] || exit 0
+          mkdir -p /tmp/out && cp "$F" /tmp/out/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/$(basename $F) "$F"
+            git add "$F"
+            if git diff --cached --quiet; then echo "لا يوجد تغيير."; exit 0; fi
+            git commit -q -m "🔤 تصحيح الأسماء العربي على جاهز فيرا"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
