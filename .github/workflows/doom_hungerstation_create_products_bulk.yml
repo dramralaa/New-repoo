@@ -24,6 +24,10 @@ on:
         description: 'HungerStation platformVendorId (store) to push the catalog to'
         required: false
         default: '186329'
+      brand:
+        description: 'Catalog source: DOOM or VERA'
+        required: false
+        default: 'DOOM'
 
 jobs:
   create:
@@ -45,6 +49,7 @@ jobs:
           MAX_BARCODES: ${{ github.event.inputs.limit }}
           ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
+          HS_BRAND: ${{ github.event.inputs.brand }}
         run: python hungerstation_create_products_bulk.py
       - name: Commit result
         if: always()
