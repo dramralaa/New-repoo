@@ -28,7 +28,11 @@ jobs:
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
           VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
-        run: python vera_platform_catalog_audit.py
+        # فحص ← ربط بالاسم (vera_name_link.py) ← فحص تاني عشان الأرقام تبين الربط الجديد
+        run: |
+          python vera_platform_catalog_audit.py
+          python vera_name_link.py
+          python vera_platform_catalog_audit.py
       - name: Commit and push result
         if: always()
         run: |
@@ -36,7 +40,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          FILES="data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json data/vera_hs_live_catalog.json"
+          FILES="data/vera_platform_catalog_audit.json data/vera_jahez_live_catalog.json data/vera_hs_live_catalog.json data/vera_name_links.json"
           mkdir -p /tmp/out && for f in $FILES; do [ -f "$f" ] && cp "$f" /tmp/out/; done
           # الملفات دي بيكتبها الفحص ده بس، فأحدث نسخة بتكسب دايمًا: نرجع على آخر main
           # ونحط الناتج فوقه بدل rebase (اللي كان بيتعارض لو تشغيلتين كتبوا ورا بعض).
