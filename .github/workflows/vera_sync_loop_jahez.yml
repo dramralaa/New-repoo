@@ -84,6 +84,9 @@ jobs:
 
           while true; do
             ITER=$((ITER + 1))
+            # 🔄 25 سبتمبر 2026: كل دورة تبدأ من آخر main (بيانات جوليب + ملفات الربط/الإخفاء + الكود).
+            # قبل كده الـcheckout كان بيتحدث بس لما الـpush يفشل ويعمل rebase.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ جاهز فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health vera_jahez vera_jahez_sync.py 300
