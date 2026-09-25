@@ -28,6 +28,10 @@ on:
         description: 'Catalog source: DOOM or VERA'
         required: false
         default: 'DOOM'
+      include_medicine:
+        description: 'VERA only: 1 = include non-prescription medicines'
+        required: false
+        default: '0'
 
 jobs:
   create:
@@ -50,6 +54,7 @@ jobs:
           ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
           HS_BRAND: ${{ github.event.inputs.brand }}
+          HS_INCLUDE_MEDICINE: ${{ github.event.inputs.include_medicine }}
         run: python hungerstation_create_products_bulk.py
       - name: Commit result
         if: always()
