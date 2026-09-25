@@ -18,6 +18,10 @@ on:
         description: 'HungerStation platformVendorId (المصدر - أي فرع، الكتالوج العالمي نفسه لكل الفروع)'
         required: false
         default: '186329'
+      brand:
+        description: 'DOOM أو VERA'
+        required: false
+        default: 'DOOM'
 
 jobs:
   harvest:
@@ -39,6 +43,7 @@ jobs:
         env:
           HS_TOKEN: ${{ github.event.inputs.token }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
+          HS_BRAND: ${{ github.event.inputs.brand }}
           GITHUB_IMAGES_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python hungerstation_harvest_images_by_barcode.py
       - name: Commit and push result log
@@ -48,7 +53,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           export GIT_EDITOR=true
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          git add data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
+          git add data/hungerstation_barcode_image_harvest_result*.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "لا يوجد تغيير في ملف النتيجة."
             exit 0
@@ -61,7 +66,7 @@ jobs:
             timeout 60 git fetch origin main
             if ! git rebase origin/main; then
               git checkout --theirs data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
-              git add data/hungerstation_barcode_image_harvest_result.json 2>/dev/null || true
+              git add data/hungerstation_barcode_image_harvest_result*.json 2>/dev/null || true
               git rebase --continue || git rebase --abort
             fi
             sleep $((i * 3))
