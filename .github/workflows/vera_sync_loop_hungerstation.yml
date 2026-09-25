@@ -38,6 +38,9 @@ jobs:
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
           VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
           VERA_HS_WRITE_ENABLED: ${{ secrets.VERA_HS_WRITE_ENABLED }}
+          # 💲 25 سبتمبر 2026: تعديل السعر اتفعّل بقرار صاحب المشروع (مزامنة فيرا زي دوم) -
+          # سعر جوليب النهائي شامل الضريبة، والتغييرات الكبيرة (> الضعف أو < النص) بتتحجز للمراجعة.
+          VERA_HS_PRICE_WRITE_ENABLED: "1"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -97,7 +100,7 @@ jobs:
             echo "════════ هنجرستيشن فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health vera_hungerstation vera_hungerstation_stock_sync.py 180
-            # فحص سعر فقط؛ VERA_HS_PRICE_WRITE_ENABLED غير مفعّل هنا، فلا PUT للأسعار.
+            # تعديل السعر مفعّل (VERA_HS_PRICE_WRITE_ENABLED=1 فوق).
             run_with_health vera_hungerstation_price vera_hungerstation_price_sync.py 300
             # تقرير تحقق موحد، قراءة ملفات النتائج فقط؛ لا كتابة على أي منصة.
             run_with_health vera_delivery_audit vera_delivery_audit.py 60
