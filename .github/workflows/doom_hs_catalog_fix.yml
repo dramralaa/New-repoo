@@ -49,11 +49,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          mkdir -p /tmp/out && cp data/doom_hs_catalog_fix*.json data/doom_hs_deleted_old_master*.json /tmp/out/ 2>/dev/null || true
+          mkdir -p /tmp/out
+          for f in data/doom_hs_catalog_fix*.json data/doom_hs_deleted_old_master*.json; do [ -f "$f" ] && cp "$f" /tmp/out/; done
+          ls -la /tmp/out
           for i in 1 2 3 4 5; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
-            cp /tmp/out/*.json data/ 2>/dev/null || true
-            git add data/doom_hs_catalog_fix*.json data/doom_hs_deleted_old_master*.json 2>/dev/null || true
+            for f in /tmp/out/*.json; do [ -f "$f" ] && cp "$f" data/ && git add "data/$(basename "$f")"; done
             if git diff --cached --quiet; then exit 0; fi
             git commit -q -m "HS catalog fix result"
             timeout 60 git push origin HEAD:main && exit 0
