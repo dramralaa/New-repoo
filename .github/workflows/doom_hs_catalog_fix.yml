@@ -11,7 +11,7 @@ on:
         description: 'HungerStation platformVendorId'
         required: true
       mode:
-        description: 'plan | relink | delete'
+        description: 'plan | relink | delete | delete_oldcode | followup'
         required: true
         default: 'plan'
       limit:
@@ -42,6 +42,7 @@ jobs:
           MODE: ${{ github.event.inputs.mode }}
           LIMIT: ${{ github.event.inputs.limit }}
           AUDIT_BRAND: DOOM
+          GITHUB_IMAGES_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python doom_hs_catalog_fix.py
       - name: Commit result
         if: always()
