@@ -50,7 +50,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
           mkdir -p /tmp/out
-          for f in data/doom_hs_catalog_fix*.json data/doom_hs_deleted_old_master*.json; do [ -f "$f" ] && cp "$f" /tmp/out/; done
+          for f in data/doom_hs_catalog_fix_*_${{ github.event.inputs.vendor_id }}.json data/doom_hs_deleted_old_master_${{ github.event.inputs.vendor_id }}.json; do [ -f "$f" ] && cp "$f" /tmp/out/; done
           ls -la /tmp/out
           for i in 1 2 3 4 5; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
