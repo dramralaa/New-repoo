@@ -1,0 +1,46 @@
+# 🧮 قراءة فقط (صفر كتابة على جوليب): عمولة نفلة المفقودة لشهر كامل + فحص السبب
+# الجذري (حقل pharmacist على السطر) - راجع juleb_calc_naflah_commission_month.py.
+# تشغيل يدوي بس. الأسرار: CROSS_REPO_TOKEN, JULEB_URL, JULEB_DB, JULEB_USER, JULEB_PASS
+name: 🧮 [DOOM] Calc Naflah Commission Month (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'YYYY-MM'
+        required: false
+        default: '2026-09'
+
+jobs:
+  calc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/zealous-pasteur-dyn450
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Calculate
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          CALC_MONTH: ${{ github.event.inputs.month }}
+        run: timeout 600 python juleb_calc_naflah_commission_month.py
+      - name: Commit result
+        run: |
+          git config user.name "3PI Automation"
+          git config user.email "automation@3pi.local"
+          git add data/juleb_naflah_commission_*.json
+          git diff --cached --quiet || git commit -m "🧮 حساب عمولة نفلة للشهر (قراءة فقط)"
+          for i in 1 2 3 4; do
+            timeout 60 git pull --rebase -q origin claude/zealous-pasteur-dyn450 && timeout 60 git push -q origin HEAD:claude/zealous-pasteur-dyn450 && exit 0
+            sleep $((i*3))
+          done
+          exit 1
