@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe (قراءة فقط) أو apply (تنفيذ على الصنف ده بس)"
+        description: "probe (قراءة فقط) أو cleanup (مسح تسوية متعلقة) أو apply (تنفيذ على الصنف ده بس)"
         required: true
         default: probe
       code:
