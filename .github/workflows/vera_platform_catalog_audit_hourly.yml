@@ -1,12 +1,12 @@
-# 📊 2 أكتوبر 2026 - نفس فحص كتالوج فيرا (vera_platform_catalog_audit.py) بس كل ساعة،
+# 📊 2 أكتوبر 2026 - نفس فحص كتالوج فيرا (vera_platform_catalog_audit.py) بس كل 8 ساعات،
 # عشان صفحة "حالة المنصات" في VPC تعرض عدد الأصناف المفعّلة وحالاتها على كل منصة
 # وتفضل محدّثة. قراءة فقط من جاهز وهنجرستيشن - صفر كتابة على المنصات. مش بيشغّل
 # vera_name_link.py (ده بيغيّر ملف الربط اللي المزامنة بتقراه - بيفضل يدوي في الـworkflow الأصلي).
-name: 📊 [VERA] فحص كتالوج المنصات كل ساعة (قراءة فقط)
+name: 📊 [VERA] فحص كتالوج المنصات كل 8 ساعات (قراءة فقط)
 
 on:
   schedule:
-    - cron: '23 * * * *'
+    - cron: '23 */8 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -48,7 +48,7 @@ jobs:
             for f in $FILES; do [ -f "/tmp/out/$(basename $f)" ] && cp "/tmp/out/$(basename $f)" "$f"; done
             git add $FILES 2>/dev/null || true
             if git diff --cached --quiet; then echo "لا يوجد تغيير."; exit 0; fi
-            git commit -q -m "📊 فحص كتالوج فيرا (كل ساعة)"
+            git commit -q -m "📊 فحص كتالوج فيرا (كل 8 ساعات)"
             timeout 60 git push origin HEAD:main && exit 0
             sleep $((i * 3))
           done
