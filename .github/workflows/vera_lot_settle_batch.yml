@@ -1,0 +1,64 @@
+# 📦 2 أكتوبر 2026 - تسوية التشغيلات السالبة لكل الأصناف على دفعات (الاعتماد النهائي من كريم في جوليب)
+name: 🧪 [VERA] تسوية التشغيلات السالبة - دفعات (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan (قراءة فقط) / prepare (تجهيز الدفعات) / verify (قراءة فقط بعد الاعتماد) / cleanup (مسح الدفعات المفتوحة)"
+        required: true
+        default: plan
+      chunk:
+        description: "عدد الأصناف في الدفعة الواحدة"
+        required: false
+        default: "300"
+      branch:
+        description: "1 = الروابي، 2 = النرجس، فاضي = الاتنين"
+        required: false
+        default: ""
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Settle
+        env:
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          MODE: ${{ inputs.mode }}
+          CHUNK: ${{ inputs.chunk }}
+          BRANCH: ${{ inputs.branch }}
+        run: python vera_lot_settle_batch.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/vera_lot_settle_batch.json
+          [ -f "$F" ] || exit 0
+          mkdir -p /tmp/out && cp "$F" /tmp/out/
+          mkdir -p /tmp/bk && cp -r data/vera_lot_backups/. /tmp/bk/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/$(basename $F) "$F" && git add "$F"
+            mkdir -p data/vera_lot_backups && cp -r /tmp/bk/. data/vera_lot_backups/ 2>/dev/null || true
+            git add data/vera_lot_backups 2>/dev/null || true
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -q -m "🧪 تسوية تشغيلات صنف واحد - فيرا (${{ inputs.mode }})"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
