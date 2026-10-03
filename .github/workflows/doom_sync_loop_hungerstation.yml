@@ -109,6 +109,9 @@ jobs:
 
           while true; do
             ITER=$((ITER + 1))
+            # 🔄 3 أكتوبر 2026 (زي فيرا): كل دورة تبدأ من آخر main (كود + baseline حدود الكمية). قبل كده الكود
+            # كان بيتحدث بس لما الـpush يفشل ويعمل rebase - فدورة اشتغلت بنسخة قديمة من حد الكمية.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ هنجرستيشن - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health hungerstation hungerstation_stock_sync.py 180
