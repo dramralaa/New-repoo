@@ -1,0 +1,65 @@
+# 🔢 3 أكتوبر 2026 - ضبط "أقصى كمية في الطلب" على هنجرستيشن فيرا حسب رصيد جوليب (بلاغ كريم - نيكوتينيل)
+# التوكن من بوابة تاجر هنجر (partner-app.hungerstation.com) - قصير العمر ومش بيتخزّن.
+name: 🔢 [VERA] حد الكمية على هنجرستيشن حسب الرصيد (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: "Bearer token من بوابة تاجر هنجرستيشن فيرا (قصير العمر - مش بيتخزّن)"
+        required: true
+      mode:
+        description: "plan (قراءة فقط) / apply (تنفيذ) / rollback (رجوع للحدود الأصلية)"
+        required: true
+        default: plan
+      branch:
+        description: "1 = الروابي، 2 = النرجس، فاضي = الاتنين"
+        required: false
+        default: ""
+
+jobs:
+  maxqty:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Mask token
+        run: echo "::add-mask::${{ inputs.token }}"
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run
+        env:
+          HS_TOKEN: ${{ inputs.token }}
+          MODE: ${{ inputs.mode }}
+          BRANCH: ${{ inputs.branch }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+        run: python vera_hs_max_qty_sync.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/out
+          for f in data/vera_hs_max_qty_sync.json data/vera_hs_max_qty_baseline.json; do [ -f "$f" ] && cp "$f" /tmp/out/; done
+          ls /tmp/out/*.json >/dev/null 2>&1 || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            for f in /tmp/out/*.json; do cp "$f" data/ && git add "data/$(basename "$f")"; done
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -q -m "🔢 حد الكمية على هنجرستيشن فيرا (${{ inputs.mode }})"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
