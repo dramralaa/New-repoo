@@ -1,0 +1,64 @@
+# 🧪 6 أكتوبر 2026 - اختبار تشغيل حقيقي لصفحات داشبورد فيرا (VPC) على جوليب فيرا (قراءة فقط) قبل النشر
+name: 🧪 [VERA] اختبار صفحات داشبورد VPC (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "فرع vera-orig اللي هيتختبر"
+        required: true
+        default: vpc-batch1
+      pages:
+        description: "صفحات مفصولة بمسافة (فاضي = الدفعة الأولى)"
+        required: false
+        default: ""
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-orig
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r vera_mpc/requirements.txt
+      - name: Secrets file (VERA only)
+        env:
+          U: ${{ secrets.VERA_URL }}
+          D: ${{ secrets.VERA_DB }}
+          N: ${{ secrets.VERA_USER }}
+          P: ${{ secrets.VERA_PASS }}
+        run: |
+          mkdir -p vera_mpc/.streamlit
+          python - <<'PY'
+          import json, os
+          vals = {"JULEB_URL_VERA": os.environ["U"], "JULEB_DB_VERA": os.environ["D"],
+                  "JULEB_USER_VERA": os.environ["N"], "JULEB_PASS_VERA": os.environ["P"]}
+          open("vera_mpc/.streamlit/secrets.toml", "w").write("".join(f"{k} = {json.dumps(v)}\n" for k, v in vals.items()))
+          PY
+      - name: Run pages
+        run: python scripts/vpc_page_smoke.py ${{ inputs.pages }}
+      - name: Save result to juleb-daily-report
+        if: always()
+        run: |
+          [ -f vpc_smoke_result.json ] || exit 0
+          cp vpc_smoke_result.json /tmp/r.json
+          rm -f vera_mpc/.streamlit/secrets.toml
+          git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/jdr
+          cd /tmp/jdr
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/r.json data/vera_vpc_smoke_result.json && git add data/vera_vpc_smoke_result.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🧪 اختبار صفحات VPC فيرا (${{ inputs.ref }})"
+            timeout 60 git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
