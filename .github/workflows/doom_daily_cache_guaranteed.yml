@@ -20,6 +20,11 @@ name: 📊 [DOOM] كاش يومي مضمون - تقارير دوم التجري�
 
 on:
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'إعادة بناء الكاش حتى لو اتبنى النهاردة'
+        type: boolean
+        default: false
   schedule:
     - cron: '5 21 * * *'    # 00:05 الرياض
     - cron: '20 21 * * *'   # 00:20 الرياض
@@ -58,7 +63,7 @@ jobs:
 
           TODAY_RIYADH=$(TZ=Asia/Riyadh date +%F)
           MARKER="doom_trial_report/data_cache/.last_build_date"
-          if [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$TODAY_RIYADH" ]; then
+          if [ "${{ inputs.force }}" != "true" ] && [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$TODAY_RIYADH" ]; then
             echo "كاش صفحة دوم التجريبية اتبنى خلاص النهاردة ($TODAY_RIYADH) - تخطي (no-op)."
             exit 0
           fi
