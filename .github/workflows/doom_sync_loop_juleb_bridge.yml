@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
   schedule:
     # شبكة أمان نادرة بس - لو السلسلة ذاتية التجديد اتقطعت لأي سبب.
-    - cron: '10 */4 * * *'
+    - cron: '10 * * * *'
 
 concurrency:
   group: doom-sync-loop-juleb-bridge

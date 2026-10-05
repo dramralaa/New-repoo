@@ -7,7 +7,7 @@ name: 🔁 [DOOM] Sync Loop - Jahez (أسعار/أرصدة)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '20 */4 * * *'
+    - cron: '20 * * * *'
 
 concurrency:
   group: doom-sync-loop-jahez

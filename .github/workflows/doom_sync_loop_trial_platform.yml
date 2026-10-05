@@ -31,7 +31,7 @@ name: 🔁 [DOOM] Sync Loop - Trial Platform (دمج main)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '40 */4 * * *'
+    - cron: '40 * * * *'
 
 concurrency:
   group: doom-sync-loop-trial-platform

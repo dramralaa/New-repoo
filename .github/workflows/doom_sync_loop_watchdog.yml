@@ -9,7 +9,7 @@ name: 🔁 [DOOM] Sync Loop - Watchdog (مراقبة تأخير المنصات)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '50 */4 * * *'
+    - cron: '50 * * * *'
 
 concurrency:
   group: doom-sync-loop-watchdog

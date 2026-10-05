@@ -10,7 +10,7 @@ name: 🔁 [DOOM] Sync Loop - Hungerstation (رصيد)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 */4 * * *'
+    - cron: '30 * * * *'
 
 concurrency:
   group: doom-sync-loop-hungerstation
