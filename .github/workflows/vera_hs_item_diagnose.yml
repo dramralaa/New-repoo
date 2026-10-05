@@ -1,0 +1,53 @@
+# 🔍 6 أكتوبر 2026 - تشخيص (قراءة فقط) لأصناف هنجرستيشن فيرا المقفولة رغم الرصيد
+name: 🔍 [VERA] تشخيص أصناف هنجرستيشن (يدوي، قراءة فقط)
+
+on:
+  workflow_dispatch:
+    inputs:
+      terms:
+        description: "كلمات البحث مفصولة بفاصلة"
+        required: true
+        default: "nizoral,amaryl,tovast,predo,sinomarin"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Diagnose
+        env:
+          TERMS: ${{ inputs.terms }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+        run: python vera_hs_item_diagnose.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/vera_hs_item_diagnose.json
+          [ -f "$F" ] || exit 0
+          cp "$F" /tmp/d.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/d.json "$F" && git add "$F"
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔍 تشخيص أصناف هنجرستيشن فيرا"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
