@@ -8,6 +8,11 @@ name: 📤 [DOOM] رفع دفعة جديدة - أصناف جاهز الجاهز�
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_medicine:
+        description: '1 = no medicines at all in this batch (OTC medicines need separate approval)'
+        required: false
+        default: '1'
 
 jobs:
   upload:
@@ -35,6 +40,7 @@ jobs:
         env:
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          SKIP_MEDICINE: ${{ github.event.inputs.skip_medicine || '1' }}
         run: |
           git config user.name "3PI Automation"
           git config user.email "automation@3pi.local"
