@@ -61,7 +61,7 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json 2>/dev/null || true
+            git add data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json data/vera_shifts.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -75,8 +75,8 @@ jobs:
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
               timeout 60 git fetch origin main
               if ! git rebase origin/main; then
-                git checkout --theirs data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json 2>/dev/null || true
-                git add data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json 2>/dev/null || true
+                git checkout --theirs data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json data/vera_shifts.json 2>/dev/null || true
+                git add data/vera_products.json data/vera_stock_balance.json data/health/vera_data_export.json data/vera_shifts.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -88,6 +88,8 @@ jobs:
             ITER=$((ITER + 1))
             echo "════════ تصدير بيانات فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
+            # 🔄 6 أكتوبر 2026: كل دورة تبدأ من آخر main - التعديلات توصل من غير إعادة تشغيل.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             run_with_health vera_data_export vera_data_export.py 120
 
             commit_and_push

@@ -59,7 +59,7 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/vera_jahez_sync.json data/health/vera_jahez.json 2>/dev/null || true
+            git add data/vera_jahez_sync.json data/health/vera_jahez.json data/vera_jahez_cancelled_orders.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -73,8 +73,8 @@ jobs:
               echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
               timeout 60 git fetch origin main
               if ! git rebase origin/main; then
-                git checkout --theirs data/vera_jahez_sync.json data/health/vera_jahez.json 2>/dev/null || true
-                git add data/vera_jahez_sync.json data/health/vera_jahez.json 2>/dev/null || true
+                git checkout --theirs data/vera_jahez_sync.json data/health/vera_jahez.json data/vera_jahez_cancelled_orders.json 2>/dev/null || true
+                git add data/vera_jahez_sync.json data/health/vera_jahez.json data/vera_jahez_cancelled_orders.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -89,6 +89,8 @@ jobs:
             timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ جاهز فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
+            # 🔄 6 أكتوبر 2026: كل دورة تبدأ من آخر main - التعديلات توصل من غير إعادة تشغيل.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             run_with_health vera_jahez vera_jahez_sync.py 300
 
             commit_and_push
