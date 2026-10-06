@@ -1,0 +1,43 @@
+# 🔍 7 أكتوبر 2026 - سبب رفض هنجرستيشن لأصناف (قراءة بس)
+name: 🔍 [DOOM HS] سبب رفض الإضافة (قراءة بس)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography pytz
+      - name: Discover
+        env:
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+        run: python doom_hs_create_fail_probe.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/doom_hs_create_fail_probe.json
+          [ -f "$F" ] || exit 0
+          cp "$F" /tmp/d.json; cp data/hs_portal_device_doom.enc /tmp/dev.enc 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/d.json "$F" && git add "$F"; [ -f /tmp/dev.enc ] && cp /tmp/dev.enc data/hs_portal_device_doom.enc && git add data/hs_portal_device_doom.enc
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔍 سبب رفض هنجر"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
