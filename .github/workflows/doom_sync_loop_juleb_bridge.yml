@@ -73,7 +73,7 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/products.json data/stock_balance.json data/health/juleb_bridge.json 2>/dev/null || true
+            git add data/products.json data/stock_balance.json data/health/juleb_bridge.json data/doom_shifts.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -97,8 +97,8 @@ jobs:
                 # بصمت بعد 5 محاولات فاشلة (حادثة هنجرستيشن 13 سبتمبر). هذه الحلقة الوحيد
                 # اللي بيكتب على الملفات دي فعليًا، فالنسخة المحلية (--theirs في rebase =
                 # الكوميت المحلي، عكس merge) هي الصحيحة دايمًا - نفس منطق sync_delay_alert_state.json.
-                git checkout --theirs data/products.json data/stock_balance.json data/health/juleb_bridge.json 2>/dev/null || true
-                git add data/products.json data/stock_balance.json data/health/juleb_bridge.json 2>/dev/null || true
+                git checkout --theirs data/products.json data/stock_balance.json data/health/juleb_bridge.json data/doom_shifts.json 2>/dev/null || true
+                git add data/products.json data/stock_balance.json data/health/juleb_bridge.json data/doom_shifts.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -108,6 +108,8 @@ jobs:
 
           while true; do
             ITER=$((ITER + 1))
+            # 🔄 6 أكتوبر 2026: كل دورة تبدأ من آخر main (زي حلقة هنجرستيشن) - التعديلات توصل من غير إعادة تشغيل.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ جسر جوليب - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health juleb_bridge claude_data_bridge_fast.py 120

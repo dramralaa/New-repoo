@@ -59,7 +59,7 @@ jobs:
           }
 
           commit_and_push() {
-            git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json 2>/dev/null || true
+            git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
             if git diff --cached --quiet; then
               echo "لا يوجد تغيير فعلي في هذه الدورة."
               return 0
@@ -80,8 +80,8 @@ jobs:
                 # تعارض حقيقي على ملفات هذه الحلقة نفسها (مش بس ملف التنبيهات) كان بيوقف
                 # الـrebase ويضيّع نتيجة الدورة بصمت. هذه الحلقة الوحيدة اللي بتكتب الملفات
                 # دي، فالنسخة المحلية الطازجة (--theirs في rebase = الكوميت المحلي) صحيحة دايمًا.
-                git checkout --theirs data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json 2>/dev/null || true
-                git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json 2>/dev/null || true
+                git checkout --theirs data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
+                git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -91,6 +91,8 @@ jobs:
 
           while true; do
             ITER=$((ITER + 1))
+            # 🔄 6 أكتوبر 2026: كل دورة تبدأ من آخر main (زي حلقة هنجرستيشن) - التعديلات توصل من غير إعادة تشغيل.
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ جاهز - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
             run_with_health jahez jahez_sync_run.py 180
