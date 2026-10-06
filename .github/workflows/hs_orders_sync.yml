@@ -31,6 +31,12 @@ jobs:
       - name: Sync
         env:
           HS_ORDERS_SOURCE: file
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+          HS_CHAIN_ID: ${{ secrets.HS_CHAIN_ID }}
+          VERA_HS_CHAIN_ID: ${{ secrets.VERA_HS_CHAIN_ID }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
