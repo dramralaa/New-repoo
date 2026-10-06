@@ -1,0 +1,51 @@
+# 🔍 6 أكتوبر 2026 - استكشاف vagw-api (GraphQL بوابة هنجرستيشن) بجلسة الجهاز الموثوق (قراءة فقط)
+name: 🔍 [HS] استكشاف vagw-api (يدوي، قراءة فقط)
+
+on:
+  workflow_dispatch:
+    inputs:
+      account:
+        description: "DOOM / VERA"
+        required: true
+        default: DOOM
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography
+      - name: Probe
+        env:
+          ACCOUNT: ${{ inputs.account }}
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
+          VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
+        run: python hs_vagw_probe.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/s
+          for f in data/hs_vagw_probe.json data/hs_portal_device_*.enc; do [ -f "$f" ] && cp "$f" /tmp/s/; done
+          ls /tmp/s/* >/dev/null 2>&1 || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/s/* data/ && git add data/hs_vagw_probe.json data/hs_portal_device_*.enc
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔍 استكشاف vagw-api"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
