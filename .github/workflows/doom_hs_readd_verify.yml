@@ -3,6 +3,11 @@ name: 🔍 [DOOM HS] تحقق إضافة الإضافة (قراءة بس)
 
 on:
   workflow_dispatch:
+    inputs:
+      vendor_id:
+        description: 'Store id'
+        required: false
+        default: '194824'
 
 jobs:
   discover:
@@ -22,6 +27,7 @@ jobs:
         env:
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
         run: python doom_hs_readd_verify.py
       - name: Commit result
         if: always()
@@ -29,7 +35,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          F=data/doom_hs_readd_verify_194824.json
+          F=data/doom_hs_readd_verify_${{ github.event.inputs.vendor_id }}.json
           [ -f "$F" ] || exit 0
           cp "$F" /tmp/d.json; cp data/hs_portal_device_doom.enc /tmp/dev.enc 2>/dev/null || true
           for i in 1 2 3 4 5; do
