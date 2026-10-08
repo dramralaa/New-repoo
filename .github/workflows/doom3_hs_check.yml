@@ -24,7 +24,6 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
-          HS_CHAIN_ID: ${{ secrets.HS_CHAIN_ID }}
         run: python doom3_hs_check.py
       - name: Commit result
         if: always()
