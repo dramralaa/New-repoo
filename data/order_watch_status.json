@@ -1,25 +1,18 @@
 {
- "generated_at_utc": "2026-10-09T15:43:35.774813+00:00",
+ "generated_at_utc": "2026-10-09T15:45:10.136725+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "دوم 1 - النسيم",
-   "last_check_utc": "2026-10-09T15:43:35.774813+00:00",
+   "last_check_utc": "2026-10-09T15:45:10.136725+00:00",
    "last_check_ok": true,
    "alerts": []
   },
   "2": {
    "label": "دوم 2 - ظهرة لبن",
-   "last_check_utc": "2026-10-09T15:43:35.774813+00:00",
+   "last_check_utc": "2026-10-09T15:45:10.136725+00:00",
    "last_check_ok": true,
-   "alerts": [
-    {
-     "order_key": "2:1183098",
-     "order_ref": "1183098",
-     "amount": 130.6,
-     "order_time_utc": "2026-10-09T15:23:45.446355+00:00"
-    }
-   ]
+   "alerts": []
   }
  },
  "messages": []
