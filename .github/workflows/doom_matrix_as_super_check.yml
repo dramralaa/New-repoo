@@ -1,0 +1,27 @@
+# 🔍 10 أكتوبر 2026 - أثر قرار "الماتريكس = سوبر 11%" لأكتوبر على كل صيدلي دوم (قراءة بس من جوليب)
+name: 🔍 [DOOM] الماتريكس كسوبر 11% - فحص الأثر (قراءة بس)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Check
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python doom_matrix_as_super_check.py
