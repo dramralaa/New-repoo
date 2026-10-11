@@ -1,0 +1,52 @@
+# 🔍 12 أكتوبر 2026 - تفاصيل طلب جاهز واحد + سبب الرفض (GET بس، بيانات العميل/السائق بتتشال قبل الحفظ)
+name: 🔍 [DOOM Jahez] تفاصيل طلب وسبب الرفض (قراءة بس)
+
+on:
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: 'رقم طلب جاهز'
+        required: true
+      item_sku:
+        description: 'كود صنف (اختياري) - لقراءة كائن الصنف الكامل'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          ORDER_ID: ${{ inputs.order_id }}
+          ITEM_SKU: ${{ inputs.item_sku }}
+        run: python jahez_order_probe.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/jahez_order_probe.json
+          [ -f "$F" ] || exit 0
+          cp "$F" /tmp/p.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/p.json "$F" && git add "$F"
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔍 تفاصيل طلب جاهز ${{ inputs.order_id }} (قراءة بس)"
+            timeout 60 git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
