@@ -12,6 +12,10 @@ on:
         description: 'أو ملف قايمة داخل الريبو (data/...json)'
         required: false
         default: ''
+      alt_sku_suffix:
+        description: 'لاحقة للكود لو هنجر رافض كود جوليب (مثال -A) - بيتربط تلقائي'
+        required: false
+        default: ''
 
 jobs:
   discover:
@@ -35,6 +39,7 @@ jobs:
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           ITEMS: ${{ inputs.items }}
           ITEMS_FILE: ${{ inputs.items_file }}
+          ALT_SKU_SUFFIX: ${{ inputs.alt_sku_suffix }}
         run: python doom_hs_add_specific.py
       - name: Commit result
         if: always()
