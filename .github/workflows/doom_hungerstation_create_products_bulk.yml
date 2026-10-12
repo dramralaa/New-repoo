@@ -68,6 +68,8 @@ jobs:
           RECHECK_EXISTING: ${{ github.event.inputs.recheck_existing }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
+          VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
         run: python hungerstation_create_products_bulk.py
       - name: Commit result
         if: always()
