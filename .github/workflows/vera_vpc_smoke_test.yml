@@ -43,6 +43,15 @@ jobs:
           PY
       - name: Run pages
         run: python scripts/vpc_page_smoke.py ${{ inputs.pages }}
+      - name: Fail if any page crashed
+        run: |
+          python - <<'PY'
+          import json, sys
+          r = json.load(open("vpc_smoke_result.json"))
+          bad = [p for p, v in r.items() if not v.get("ok") or (v.get("initial") or {}).get("exceptions")]
+          print("❌ صفحات فيها مشكلة:" if bad else "✅ كل الصفحات اشتغلت", bad)
+          sys.exit(1 if bad else 0)
+          PY
       - name: Save result to juleb-daily-report
         if: always()
         run: |
