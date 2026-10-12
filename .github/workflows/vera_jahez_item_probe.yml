@@ -1,0 +1,48 @@
+# 🔍 12 أكتوبر 2026 - أصناف جاهز فيرا بالاسم مقابل جوليب فيرا والرصيد (قراءة بس)
+name: 🔍 [VERA Jahez] فحص أصناف بالاسم (قراءة بس)
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: 'كلمة البحث'
+        required: true
+        default: 'panadol'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Probe
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          QUERY: ${{ inputs.query }}
+        run: python vera_jahez_item_probe.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          F=data/vera_jahez_item_probe.json
+          [ -f "$F" ] || exit 0
+          cp "$F" /tmp/p.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/p.json "$F" && git add "$F"
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔍 أصناف جاهز فيرا - ${{ inputs.query }}"
+            timeout 60 git push -q origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
