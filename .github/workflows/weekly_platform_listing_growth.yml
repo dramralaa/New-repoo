@@ -1,0 +1,54 @@
+# 📈 12 أكتوبر 2026 - رفع أسبوعي أوتوماتيك لكل الأصناف اللي عليها رصيد ومش معروضة (بموافقة صاحب المشروع)
+# الترتيب: دوم هنجر (فحص الفجوة ← رفع اللي هنجر عارفه ← إعادة إنشاء الأصناف اليتيمة بكودها القديم + ربط ← مزامنة الرصيد)
+#          ← فيرا هنجر (الفرعين) ← حصاد صور بالباركود (دوم + فيرا) ← جاهز دوم (OTC المعتمد بس) ← جاهز فيرا (من غير أدوية).
+# كل خطوة workflow موجود أصلًا بنفس قواعد الأمان (سياسة الأدوية/الوصفة/الاستبعاد) - هنا بس بيتشغّلوا ورا بعض.
+name: 📈 [DOOM+VERA] زيادة الأصناف المعروضة - أسبوعي
+
+on:
+  schedule:
+    - cron: '47 23 * * 5'   # الجمعة 23:47 UTC = فجر السبت 2:47 بتوقيت الرياض
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: weekly-listing-growth
+  cancel-in-progress: false
+
+jobs:
+  run-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Run steps in order
+        run: |
+          run() {
+            W=$1; shift
+            T=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            gh workflow run "$W" -R "$REPO" "$@" || { echo "::warning::تعذّر تشغيل $W"; return 0; }
+            sleep 20
+            ID=""
+            for i in $(seq 1 15); do
+              ID=$(gh run list -R "$REPO" -w "$W" -e workflow_dispatch -L 5 --json databaseId,createdAt -q "[.[] | select(.createdAt >= \"$T\")][-1].databaseId")
+              [ -n "$ID" ] && break; sleep 10
+            done
+            [ -z "$ID" ] && { echo "::warning::$W ماظهرش"; return 0; }
+            gh run watch "$ID" -R "$REPO" --interval 30 > /dev/null 2>&1 || true
+            echo "$W → $(gh run view "$ID" -R "$REPO" --json conclusion -q .conclusion)"
+          }
+          run doom_hs_gap_check.yml
+          run doom_hs_add_specific.yml -f items_file=data/doom_hs_gap_check.json
+          for v in 186329 194824 196899; do run doom_hs_orphan_readd.yml -f vendor_id=$v -f limit=500; done
+          run doom_hungerstation_stock_sync.yml
+          for v in 149439 174067; do run doom_hungerstation_create_products_bulk.yml -f limit=3000 -f active_default=true -f vendor_id=$v -f brand=VERA -f include_medicine=1 -f skip_medicine=0 -f recheck_existing=0; done
+          run doom_hungerstation_harvest_images_by_barcode.yml -f brand=DOOM -f vendor_id=196899
+          run doom_hungerstation_harvest_images_by_barcode.yml -f brand=VERA -f vendor_id=174067
+          run doom_manual_jahez_new_products_batch.yml -f skip_medicine=0
+          run vera_manual_jahez_new_items.yml -f include_medicine=false
+          run doom_platform_catalog_audit.yml
+          run vera_platform_catalog_audit.yml
