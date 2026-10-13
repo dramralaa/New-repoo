@@ -1,0 +1,71 @@
+# 🧪 13 أكتوبر 2026 - اختبار صفحات داشبورد دوم MPC (doom_trial_report) على جوليب دوم الحقيقي قبل النشر (قراءة بس)
+name: 🧪 [DOOM MPC] اختبار صفحات
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'فرع juleb-daily-report'
+        required: true
+        default: 'main'
+      pages:
+        description: 'مسارات الصفحات (مسافة بينها) - مثال: pages/1_إدارة_المشتريات_الشاملة.py'
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r doom_trial_report/requirements.txt
+      - name: Secrets file (DOOM only)
+        env:
+          U: ${{ secrets.JULEB_URL }}
+          D: ${{ secrets.JULEB_DB }}
+          N: ${{ secrets.JULEB_USER }}
+          P: ${{ secrets.JULEB_PASS }}
+        run: |
+          mkdir -p doom_trial_report/.streamlit
+          python - <<'PY'
+          import json, os
+          vals = {"JULEB_URL_DOOM": os.environ["U"], "JULEB_DB_DOOM": os.environ["D"],
+                  "JULEB_USER_DOOM": os.environ["N"], "JULEB_PASS_DOOM": os.environ["P"]}
+          open("doom_trial_report/.streamlit/secrets.toml", "w").write("".join(f"{k} = {json.dumps(v)}\n" for k, v in vals.items()))
+          PY
+      - name: Run pages
+        env:
+          PAGES: ${{ inputs.pages }}
+        run: |
+          cd doom_trial_report
+          python - <<'PY'
+          import json, os, sys, time
+          from streamlit.testing.v1 import AppTest
+          out, bad = {}, []
+          for p in os.environ["PAGES"].split():
+              t0 = time.time()
+              try:
+                  at = AppTest.from_file(p, default_timeout=600).run()
+                  r = {"exceptions": [str(e.value)[:300] for e in at.exception], "errors": [str(e.value)[:200] for e in at.error],
+                       "warnings": [str(w.value)[:200] for w in at.warning], "markdown": [str(m.value)[:160] for m in at.markdown][:25],
+                       "dataframes": len(at.dataframe), "checkboxes": [c.label for c in at.checkbox]}
+                  r["ok"] = not r["exceptions"]
+              except Exception as e:  # noqa: BLE001
+                  r = {"crash": str(e)[:300], "ok": False}
+              r["seconds"] = round(time.time() - t0, 1)
+              out[p] = r
+              if not r["ok"]:
+                  bad.append(p)
+              print(("✅ " if r["ok"] else "❌ ") + p, json.dumps(r, ensure_ascii=False)[:1500])
+          sys.exit(1 if bad else 0)
+          PY
+      - name: Clean secrets
+        if: always()
+        run: rm -f doom_trial_report/.streamlit/secrets.toml
