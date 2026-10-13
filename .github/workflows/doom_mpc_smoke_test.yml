@@ -55,7 +55,7 @@ jobs:
                   at = AppTest.from_file(p, default_timeout=600).run()
                   r = {"exceptions": [str(e.value)[:300] for e in at.exception], "errors": [str(e.value)[:200] for e in at.error],
                        "warnings": [str(w.value)[:200] for w in at.warning], "markdown": [str(m.value)[:160] for m in at.markdown][:25],
-                       "dataframes": len(at.dataframe), "checkboxes": [c.label for c in at.checkbox]}
+                       "dataframes": len(at.dataframe), "metrics": [(m.label, m.value, str(m.delta)) for m in at.metric], "checkboxes": [c.label for c in at.checkbox]}
                   r["ok"] = not r["exceptions"]
               except Exception as e:  # noqa: BLE001
                   r = {"crash": str(e)[:300], "ok": False}
