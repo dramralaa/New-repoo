@@ -1,0 +1,30 @@
+# 🖼️ 17 أكتوبر 2026 - استبدال صورة صنف دوم على جاهز بالصورة المعتمدة في doom-product-images (أول حالة: كوفيرام 5/10)
+name: 🖼️ [DOOM] جاهز - استبدال صورة صنف
+
+on:
+  workflow_dispatch:
+    inputs:
+      codes:
+        description: 'أكواد جوليب مفصولة بفاصلة'
+        required: true
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Replace
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          CODES: ${{ inputs.codes }}
+        run: python3 doom_jahez_replace_image.py
