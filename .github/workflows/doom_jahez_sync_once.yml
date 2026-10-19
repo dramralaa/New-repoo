@@ -1,0 +1,67 @@
+# 🔂 19 أكتوبر 2026 - تشغيلة واحدة لمزامنة جاهز دوم من آخر main (معاينة أو كتابة) - يدوي
+name: 🔂 [DOOM Jahez] مزامنة مرة واحدة (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: '1 = كتابة فعلية، 0 = معاينة بس'
+        required: true
+        default: '0'
+      max_changes:
+        description: 'حد أقصى للتغييرات (الافتراضي 1500)'
+        required: false
+        default: '1500'
+
+concurrency:
+  group: doom-sync-loop-jahez-once
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz requests
+      - name: Sync once
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: ${{ github.event.inputs.write }}
+          JAHEZ_WRITE_MAX_CHANGES: ${{ github.event.inputs.max_changes }}
+        run: |
+          python jahez_sync_run.py | tail -40
+          python - <<'PY'
+          import json
+          from collections import Counter
+          d = json.load(open("data/jahez_sync.json"))
+          print("branch_map:", d.get("branch_map"))
+          wp = d.get("write_plan") or []
+          print("plan:", len(wp), "aborted:", d.get("write_aborted"), "written:", len(d.get("write_log") or []))
+          print(Counter((tuple(o.get("added", [])), tuple(o.get("removed", []))) for o in wp).most_common(10))
+          PY
+      - name: Commit result (كتابة بس)
+        if: github.event.inputs.write == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep && cp data/jahez_sync.json /tmp/keep/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/keep/jahez_sync.json data/
+            git add data/jahez_sync.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔂 جاهز - تشغيلة يدوية"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
