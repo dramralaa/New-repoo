@@ -12,6 +12,10 @@ on:
         description: 'حد أقصى للتغييرات (الافتراضي 1500)'
         required: false
         default: '1500'
+      force_branches:
+        description: 'فروع تتزامن حتى لو رصيدها لسه ناقص (مثلا 4)'
+        required: false
+        default: ''
 
 concurrency:
   group: doom-sync-loop-jahez-once
@@ -37,6 +41,7 @@ jobs:
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           JAHEZ_WRITE_ENABLED: ${{ github.event.inputs.write }}
           JAHEZ_WRITE_MAX_CHANGES: ${{ github.event.inputs.max_changes }}
+          JAHEZ_FORCE_BRANCH_NUMS: ${{ github.event.inputs.force_branches }}
         run: |
           python jahez_sync_run.py | tail -40
           python - <<'PY'
