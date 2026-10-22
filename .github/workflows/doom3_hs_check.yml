@@ -3,6 +3,15 @@ name: 🔍 [DOOM 3 HS] فحص فرع الملك فهد (قراءة بس)
 
 on:
   workflow_dispatch:
+    inputs:
+      vendor_id:
+        description: 'رقم الفرع على هنجرستيشن'
+        required: false
+        default: '196899'
+      branch:
+        description: 'الفرع في جوليب (DOOM 3 / DOOM 4)'
+        required: false
+        default: 'DOOM 3'
 
 jobs:
   discover:
@@ -24,6 +33,8 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          DOOM3_VENDOR_ID: ${{ github.event.inputs.vendor_id || '196899' }}
+          CHECK_BRANCH: ${{ github.event.inputs.branch || 'DOOM 3' }}
         run: python doom3_hs_check.py
       - name: Commit result
         if: always()
@@ -31,7 +42,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          F=data/doom3_hs_check.json
+          B="${{ github.event.inputs.branch || 'DOOM 3' }}"; F="data/doom${B##* }_hs_check.json"
           [ -f "$F" ] || exit 0
           cp "$F" /tmp/d.json; cp data/hs_portal_device_doom.enc /tmp/dev.enc 2>/dev/null || true
           for i in 1 2 3 4 5; do
