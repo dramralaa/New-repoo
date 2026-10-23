@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "create / get / delete"
+        description: "create / get / delete / maxqty"
         default: "get"
       product_id:
         description: "Jahez product id"
@@ -14,6 +14,8 @@ on:
         default: "5"
       hours:
         default: "12"
+      max_qty:
+        default: "0"
       discount_id:
         description: "للمسح (اختياري - فاضي = يمسح خصومات التجربة TEST)"
         default: ""
@@ -45,6 +47,7 @@ jobs:
           DEAL_PCT: ${{ inputs.pct }}
           DEAL_HOURS: ${{ inputs.hours }}
           DISCOUNT_ID: ${{ inputs.discount_id }}
+          MAX_QTY: ${{ inputs.max_qty }}
         run: python doom_jahez_discount_test.py
       - name: Commit result
         if: always()
