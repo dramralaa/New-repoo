@@ -7,6 +7,12 @@ name: 📤 [DOOM] رفع يدوي - أصناف جاهز الجاهزة (بارك
 
 on:
   workflow_dispatch:
+    inputs:
+      source:
+        description: "فاضي = الكتالوج الرئيسي | supplier = قايمة المورد (24 أكتوبر)"
+        default: ""
+      max_items:
+        default: "100000"
 
 jobs:
   upload:
@@ -27,6 +33,8 @@ jobs:
         env:
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          SOURCE: ${{ inputs.source }}
+          MAX_ITEMS: ${{ inputs.max_items }}
         run: |
           git config user.name "3PI Automation"
           git config user.email "automation@3pi.local"
