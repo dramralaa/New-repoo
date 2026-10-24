@@ -35,7 +35,7 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           WATCH_INTERVAL_SEC: '20'
           WATCH_DURATION_MIN: '330'
-        run: python jahez_order_watch.py
+        run: python -u jahez_order_watch.py
       - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
         if: always()
         run: |
@@ -44,4 +44,3 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_order_watch_loop.yml/dispatches" \
             -d '{"ref":"main"}'
-
