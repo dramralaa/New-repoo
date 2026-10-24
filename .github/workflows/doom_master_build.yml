@@ -1,0 +1,39 @@
+# 🗂️ 24 أكتوبر 2026 - إعادة بناء ماستر أصناف دوم الموحّد أسبوعيًا (قراءة بس من ملفات الريبو - مفيش كتابة على جوليب/المنصات)
+name: 🗂️ [DOOM] بناء الماستر الموحّد
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 6"   # السبت 6:17 الصبح الرياض (بعد نمو المنصات الأسبوعي)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pandas xlsxwriter pytz requests
+      - name: Build
+        run: python doom_master_build.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/m && cp data/doom_master.json data/DOOM_Master.xlsx /tmp/m/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/m/* data/ && git add data/doom_master.json data/DOOM_Master.xlsx
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🗂️ تحديث الماستر الموحّد لدوم"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
