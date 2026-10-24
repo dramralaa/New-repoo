@@ -52,6 +52,8 @@ jobs:
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             printf '%s' "$PUSHED" > /tmp/pushed.json
             export HS_PUSHED_FILE=/tmp/pushed.json
+            # تنبيه شيفتي أولًا؛ لا ننتظر مطابقة الفاتورة الثقيلة.
+            python shifty_hs_order_ingest.py /tmp/pushed.json
           fi
           python hs_orders_sync.py
       - name: Commit
@@ -72,3 +74,4 @@ jobs:
             sleep $((i * 3))
           done
           exit 1
+
