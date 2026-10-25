@@ -1,17 +1,19 @@
 {
- "generated_at_utc": "2026-10-25T02:50:15.721597+00:00",
+ "generated_at_utc": "2026-10-25T02:50:38.590303+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "دوم 1 - النسيم",
-   "last_check_utc": "2026-10-25T02:50:15.721597+00:00",
-   "last_check_ok": true,
+   "last_check_utc": "2026-10-25T02:50:38.590303+00:00",
+   "last_check_ok": false,
+   "error": "GET https://api.pik.sa/portal/stores/8856/orders?orderStatusId=0&tableKey=1&branchId=13056&page=1&pageCount=20 → HTTP 401: {\"type\":\"https://pik.sa/errors/bad-reqeust\",\"title\":\"An error occurred\",\"stat",
    "alerts": []
   },
   "2": {
    "label": "دوم 2 - ظهرة لبن",
-   "last_check_utc": "2026-10-25T02:50:15.721597+00:00",
-   "last_check_ok": true,
+   "last_check_utc": "2026-10-25T02:50:38.590303+00:00",
+   "last_check_ok": false,
+   "error": "GET https://api.pik.sa/portal/stores/8856/orders?orderStatusId=0&tableKey=1&branchId=12922&page=1&pageCount=20 → HTTP 502: {\"type\":\"https://developers.cloudflare.com/support/troubleshooting/http-statu",
    "alerts": []
   }
  },
