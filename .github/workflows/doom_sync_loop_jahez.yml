@@ -95,7 +95,9 @@ jobs:
             timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ جاهز - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
-            run_with_health jahez jahez_sync_run.py 180
+            # 25 أكتوبر 2026: 180 ثانية بقت مش كفاية بعد ما الكتالوج كبر من 4,888 لـ~6,500 صنف - كل دورة كانت بتتقتل (exit 124)
+            # من 24 أكتوبر 23:17 UTC فمفيش أي تحديث رصيد/سعر اتكتب على جاهز ~20 ساعة.
+            run_with_health jahez jahez_sync_run.py 900
 
             commit_and_push
 
