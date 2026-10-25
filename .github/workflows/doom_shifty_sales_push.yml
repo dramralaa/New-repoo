@@ -1,0 +1,35 @@
+# 💰 26 أكتوبر 2026 – مبيعات الصيادلة من جوليب لصفحة «مبيعاتي» في Shifty (تجربة على سالم).
+# السكربت: shifty_sales_push.py في جذر juleb-daily-report (main). قراءة بس من جوليب.
+name: 💰 [DOOM] Shifty – مبيعات الصيادلة (كل ساعة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+concurrency:
+  group: doom-shifty-sales-push
+  cancel-in-progress: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography pytz
+      - name: Push sales to Shifty
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+        run: python shifty_sales_push.py
