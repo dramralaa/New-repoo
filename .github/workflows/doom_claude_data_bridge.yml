@@ -47,6 +47,13 @@ jobs:
           git config user.name "Juleb Bot"
           git config user.email "bot@juleb.local"
           git add data/ docs/financial_dashboard_data.json
-          git diff --staged --quiet || git commit -m "🤖 تحديث بيانات Claude Data Bridge اليومي"
-          git pull --rebase -q
-          git push
+          git diff --staged --quiet && exit 0
+          git commit -q -m "🤖 تحديث بيانات Claude Data Bridge اليومي"
+          # 26 أكتوبر 2026: push واحد بس كان بيفشل لما حلقة تانية تكتب في نفس اللحظة (25 أكتوبر 22:24 UTC) فبيانات
+          # مبيعات المنصات فضلت قديمة ساعات. دلوقتي 5 محاولات، ولو فيه تعارض نسختنا الجديدة هي اللي بتكسب (-X theirs في rebase).
+          for i in 1 2 3 4 5; do
+            timeout 60 git pull --rebase -X theirs -q origin main || { git rebase --abort 2>/dev/null; sleep $((i * 3)); continue; }
+            timeout 60 git push && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
