@@ -1,5 +1,6 @@
 # 💰 26 أكتوبر 2026 – مبيعات الصيادلة من جوليب لصفحة «مبيعاتي» في Shifty (تجربة على سالم).
 # السكربت: shifty_sales_push.py في جذر juleb-daily-report (main). قراءة بس من جوليب.
+# التارجت: من «إعدادات التارجت الشهري» في داشبورد دوم (monthly_targets.json)، والاحتياطي targets_config.py.
 name: 💰 [DOOM] Shifty – مبيعات الصيادلة (كل ساعة)
 
 on:
@@ -32,4 +33,5 @@ jobs:
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          TARGETS_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python shifty_sales_push.py
