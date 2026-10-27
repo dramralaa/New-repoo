@@ -5,6 +5,11 @@ name: 💰 [DOOM] Shifty – مبيعات الصيادلة (كل ساعة)
 
 on:
   workflow_dispatch:
+    inputs:
+      backfill_days:
+        description: 'عدد أيام البناء الأولي (1-93، الافتراضي 3)'
+        required: false
+        default: '3'
   schedule:
     - cron: '17 * * * *'
 
@@ -34,4 +39,5 @@ jobs:
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           TARGETS_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          SHIFTY_SALES_DAYS: ${{ inputs.backfill_days || '3' }}
         run: python shifty_sales_push.py
