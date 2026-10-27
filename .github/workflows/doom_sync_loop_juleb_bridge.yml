@@ -127,13 +127,13 @@ jobs:
             if [ "$H" -ge 23 ] || [ "$H" -lt 6 ]; then
               SLEEP=7200
             else
-              SLEEP=1800
+              SLEEP=2400
             fi
             REMAINING=$((DURATION - ELAPSED))
             if [ $SLEEP -gt $REMAINING ]; then
               SLEEP=$REMAINING
             fi
-            echo "نايم $SLEEP ثانية قبل الدورة الجاية..."
+            echo "نايم $SLEEP ثانية قبل الدورة الجاية (40 دقيقة نهارًا / ساعتين ليلًا)..."
             sleep $SLEEP
           done
       - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
