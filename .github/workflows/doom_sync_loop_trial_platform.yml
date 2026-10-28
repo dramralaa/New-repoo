@@ -108,7 +108,17 @@ jobs:
               break
             fi
 
-            SLEEP=600   # كل 10 دقايق - دمج main خفيف وسريع، والمنصة محتاجة تفضل قريبة من main دايمًا
+            # 28 أكتوبر 2026 (طلب صاحب المشروع): كل 10 دقايق من 10 صباحًا لـ1 بعد منتصف الليل (توقيت الرياض)،
+            # وكل نص ساعة من 1 لـ10 صباحًا - كل دمج بيحدّث فرع النشر فالتطبيق بيعيد التشغيل، والليل مفيش مستخدمين.
+            H=$((10#$(TZ=Asia/Riyadh date +%H)))
+            if [ $H -ge 10 ] || [ $H -lt 1 ]; then
+              SLEEP=600
+            else
+              SLEEP=1800
+              UNTIL10=$(( (10 - H) * 3600 - 10#$(TZ=Asia/Riyadh date +%M) * 60 - 10#$(date +%S) ))
+              [ $UNTIL10 -lt 60 ] && UNTIL10=60
+              [ $SLEEP -gt $UNTIL10 ] && SLEEP=$UNTIL10   # ما نتخطاش الساعة 10 (بداية التحديث كل 10 دقايق)
+            fi
             REMAINING=$((DURATION - ELAPSED))
             if [ $SLEEP -gt $REMAINING ]; then
               SLEEP=$REMAINING
