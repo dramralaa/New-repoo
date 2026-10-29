@@ -33,6 +33,7 @@ jobs:
       - run: pip install pytz requests
       - name: Continuous sync loop (~5.5 ساعة، بيتجدد ذاتيًا بعدها)
         env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
@@ -50,7 +51,12 @@ jobs:
             local name="$1" script="$2" timeout_sec="$3"
             local outfile="/tmp/${name}_output.log"
             local code=0
-            timeout "$timeout_sec" python "$script" > "$outfile" 2>&1 || code=$?
+            # 🛡️ 29 أكتوبر 2026 (PLATFORM_LOAD_RULES.md): زرار إيقاف + فرملة تلقائية + عدّاد طلبات (من غير أي تعديل في السكربت)
+            if ! python platform_guard.py check "$name"; then return 0; fi
+            rm -f "/tmp/${name}_meter.json"
+            PYTHONPATH="$PWD/platform_meter_boot${PYTHONPATH:+:$PYTHONPATH}" PLATFORM_METER_FILE="/tmp/${name}_meter.json" \
+              timeout "$timeout_sec" python "$script" > "$outfile" 2>&1 || code=$?
+            [ $code -eq 124 ] && ANY_TIMEOUT=1
             if [ $code -eq 0 ]; then
               tail -5 "$outfile"
             else
@@ -107,6 +113,11 @@ jobs:
             else
               SLEEP=1800
             fi
+            if [ "${ANY_TIMEOUT:-0}" = "1" ]; then
+              SLEEP=$((SLEEP * 2)); [ $SLEEP -gt 7200 ] && SLEEP=7200
+              echo "🛑 فرملة تلقائية: دورة وصلت للحد الأقصى للوقت (المنصة بطيئة) - تباعد الدورة الجاية لـ $SLEEP ثانية"
+            fi
+            ANY_TIMEOUT=0
             REMAINING=$((DURATION - ELAPSED))
             if [ $SLEEP -gt $REMAINING ]; then
               SLEEP=$REMAINING

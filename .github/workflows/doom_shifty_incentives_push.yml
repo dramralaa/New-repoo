@@ -1,11 +1,12 @@
+# 🕛 مرة واحدة يوميًا بدل كل ساعة (تخفيف الضغط على جوليب - PLATFORM_LOAD_RULES.md)
 # 💰 29 أكتوبر 2026 – «الحوافز التفصيلية لكل صيدلي» لشيفتي (حساب المديرين بس) – اتنقلت من صفحة نسبة مبيعات البروفيت بداشبورد دوم.
 # السكربت: shifty_incentives_push.py في جذر juleb-daily-report (main). قراءة بس من جوليب.
-name: 💰 [DOOM] Shifty – الحوافز التفصيلية (كل ساعة)
+name: 💰 [DOOM] Shifty – الحوافز التفصيلية (مرة يوميًا 00:01 الرياض)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '41 * * * *'
+    - cron: '1 21 * * *'   # 21:01 UTC = 00:01 بتوقيت الرياض - لحد نهاية أمس (موافقة صاحب المشروع 29 أكتوبر 2026)
 
 concurrency:
   group: doom-shifty-incentives-push
