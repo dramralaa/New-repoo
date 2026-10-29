@@ -1,3 +1,4 @@
+# 🚦 29 أكتوبر 2026: بقى طلب واحد بكل الكتالوج (مش دفعات) + خانة تأكيد - تحذير هنجر من حظر الـIP (HS_API_RULES.md)
 # 📦 19 أكتوبر 2026 - بوش كامل (Bulk Update) لفرع دوم واحد على هنجرستيشن قبل الخروج لايف - يدوي فقط بطلب صاحب المشروع
 name: 📦 [DOOM HS] بوش كامل لفرع واحد (يدوي)
 
@@ -12,6 +13,10 @@ on:
         description: '1 = أي SKU مش مربوط بجوليب يتبعت غير نشط (عشان العدد يطابق الكتالوج)'
         required: false
         default: '1'
+      confirm:
+        description: 'اكتب PUSH للتأكيد - البوش الكامل بطلب هنجر أو موافقة صاحب المشروع بس (HS_API_RULES.md)'
+        required: true
+        default: ''
 
 concurrency:
   group: doom-hs-branch-full-push
@@ -22,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      - name: 🚦 تأكيد (شروط هنجر 29 أكتوبر 2026 - طلب واحد، والبوش الكامل مش روتين)
+        if: github.event.inputs.confirm != 'PUSH'
+        run: |
+          echo "البوش الكامل متوقف: لازم تكتب PUSH في خانة التأكيد (HS_API_RULES.md)"
+          exit 1
       - uses: actions/checkout@v4
         with:
           repository: dramralaa/juleb-daily-report
