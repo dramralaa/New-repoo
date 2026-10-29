@@ -1,0 +1,68 @@
+# 📋 29 أكتوبر 2026 - مهمة الصيادلة: تحديث ماستر جوليب (5 فئات رئيسية + فرعية + منصات + وصفة).
+# بيعمل مرتين: (1) قراءة واحدة read-only لشجرة فئات جوليب دوم (~6 طلبات XML-RPC) ← data/doom_juleb_categories.json
+# (2) بناء ملفين Excel للصيدلييّن ← data/DOOM_Master_Task_A/B_<date>.xlsx.
+# ⚠️ PLATFORM_LOAD_RULES.md: القراءة من جوليب محتاجة موافقة صاحب المشروع الصريحة - خانة التأكيد لازم تتكتب APPROVED.
+name: 📋 [DOOM] مهمة الصيادلة - ماستر جوليب (قراءة فئات + بناء الملفين، يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'اكتب APPROVED بعد موافقة صاحب المشروع على قراءة جوليب (PLATFORM_LOAD_RULES.md)'
+        required: true
+        default: ''
+      skip_juleb_read:
+        description: '1 = بدون قراءة جوليب (بناء الملفين من اللي موجود بس)'
+        required: false
+        default: ''
+
+concurrency:
+  group: doom-master-task-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 🛡️ تأكيد الموافقة + زرار الإيقاف
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "APPROVED" ]; then echo "متوقف: لازم تكتب APPROVED (موافقة صاحب المشروع)"; exit 1; fi
+          case ",${PLATFORM_PAUSE,,}," in *,juleb,*|*,all,*) echo "⛔ PLATFORM_PAUSE مفعّل على جوليب"; exit 1;; esac
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install openpyxl
+      - name: قراءة فئات جوليب (read-only، مرة واحدة)
+        if: github.event.inputs.skip_juleb_read != '1'
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python doom_juleb_categories_read.py
+      - name: بناء ملفي المهمة
+        run: python doom_master_task_export.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep && cp data/doom_juleb_categories.json data/DOOM_Master_Task_*.xlsx /tmp/keep/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/keep/* data/ 2>/dev/null || true
+            git add data/doom_juleb_categories.json data/DOOM_Master_Task_A_*.xlsx data/DOOM_Master_Task_B_*.xlsx 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "📋 مهمة الصيادلة: فئات جوليب + ملفي الماستر"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
