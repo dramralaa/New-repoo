@@ -1,0 +1,43 @@
+# 💰 29 أكتوبر 2026 – «الحوافز التفصيلية لكل صيدلي» لشيفتي (حساب المديرين بس) – اتنقلت من صفحة نسبة مبيعات البروفيت بداشبورد دوم.
+# السكربت: shifty_incentives_push.py في جذر juleb-daily-report (main). قراءة بس من جوليب.
+name: 💰 [DOOM] Shifty – الحوافز التفصيلية (كل ساعة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 * * * *'
+
+concurrency:
+  group: doom-shifty-incentives-push
+  cancel-in-progress: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          path: dash
+          sparse-checkout: doom_trial_report
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography pytz
+      - name: Push incentives to Shifty
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          TARGETS_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python shifty_incentives_push.py
