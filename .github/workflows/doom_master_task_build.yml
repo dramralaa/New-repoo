@@ -65,8 +65,10 @@ jobs:
             timeout 60 git fetch origin main && git reset -q --hard origin/main
             cp /tmp/keep/* data/ 2>/dev/null || true
             git add data/doom_juleb_categories.json 2>/dev/null || true
-            git add data/DOOM_Master_Task_A_*.xlsx 2>/dev/null || true
-            git add data/DOOM_Master_Task_B_*.xlsx 2>/dev/null || true
+            git add data/DOOM_Master_Task_1_*.xlsx 2>/dev/null || true
+            git add data/DOOM_Master_Task_2_*.xlsx 2>/dev/null || true
+            git add data/DOOM_Master_Task_3_*.xlsx 2>/dev/null || true
+            git add data/DOOM_Master_Auto_Classification_*.xlsx 2>/dev/null || true
             git diff --cached --quiet && exit 0
             git commit -q -m "📋 مهمة الصيادلة: فئات جوليب + ملفي الماستر"
             timeout 60 git push origin HEAD:main && exit 0
