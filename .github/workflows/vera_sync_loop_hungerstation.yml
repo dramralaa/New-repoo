@@ -112,13 +112,12 @@ jobs:
             timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ هنجرستيشن فيرا - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
-            run_with_health vera_hungerstation vera_hungerstation_stock_sync.py 180
-            # تعديل السعر مفعّل (VERA_HS_PRICE_WRITE_ENABLED=1 فوق).
+            run_with_health vera_hungerstation vera_hungerstation_stock_sync.py 600
+            # 🛡️ 30 أكتوبر 2026: الأسعار بقت جوه طلب مزامنة الرصيد (نافذة الفجر) - الخطوة دي مجرد رسالة، مفيش طلب لهنجر منها.
             run_with_health vera_hungerstation_price vera_hungerstation_price_sync.py 300
             # تقرير تحقق موحد، قراءة ملفات النتائج فقط؛ لا كتابة على أي منصة.
             run_with_health vera_delivery_audit vera_delivery_audit.py 60
-            # Canary واحد معتمد: 10 أصناف SKU مباشرة لكل فرع، وmarker يمنع أي تكرار.
-            run_with_health vera_hungerstation_price_canary vera_hungerstation_price_canary.py 300
+            # 🛡️ 30 أكتوبر 2026: الـCanary اتشال نهائيًا (كان طلب PUT مستقل خارج الدورة - قواعد هنجر: طلب واحد لكل فرع).
 
             commit_and_push
 
