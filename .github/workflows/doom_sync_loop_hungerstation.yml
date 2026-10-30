@@ -124,7 +124,7 @@ jobs:
             timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
             echo "════════ هنجرستيشن - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
-            run_with_health hungerstation hungerstation_stock_sync.py 180
+            run_with_health hungerstation hungerstation_stock_sync.py 600
             run_with_health hs_price_sync hungerstation_price_sync.py 300
 
             commit_and_push
