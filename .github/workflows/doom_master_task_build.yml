@@ -11,6 +11,10 @@ on:
         description: 'اكتب APPROVED بعد موافقة صاحب المشروع على قراءة جوليب (PLATFORM_LOAD_RULES.md)'
         required: true
         default: ''
+      skip_export:
+        description: '1 = قراءة فئات جوليب بس (من غير بناء ملفات الإكسيل)'
+        required: false
+        default: ''
       skip_juleb_read:
         description: '1 = بدون قراءة جوليب (بناء الملفين من اللي موجود بس)'
         required: false
@@ -48,7 +52,8 @@ jobs:
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
         run: python doom_juleb_categories_read.py
-      - name: بناء ملفي المهمة
+      - name: بناء ملفات المهمة
+        if: github.event.inputs.skip_export != '1'
         run: python doom_master_task_export.py
       - name: Commit result
         run: |
