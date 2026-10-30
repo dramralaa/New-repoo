@@ -13,10 +13,10 @@
 #   TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 name: 🕵️ [DOOM] Hungerstation Writer Drift Audit (كل ساعتين)
 
+# ⏸️ 30 أكتوبر 2026 (قرار صاحب المشروع بعد تحذير هنجرستيشن من كثرة الطلبات/الـRate Limit): الفحص الدوري كل ساعتين متوقف
+# (كان بيقرا كتالوج كل فرع كامل). بيشتغل يدويًا بس (workflow_dispatch) عند الحاجة. الرجوع: رجّع الـschedule (cron '5 */2 * * *').
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '5 */2 * * *'
 
 jobs:
   audit:
