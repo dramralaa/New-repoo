@@ -1,43 +1,54 @@
-# 💰 26 أكتوبر 2026 – مبيعات الصيادلة من جوليب لصفحة «مبيعاتي» في Shifty (تجربة على سالم).
-# السكربت: shifty_sales_push.py في جذر juleb-daily-report (main). قراءة بس من جوليب.
-# التارجت: من «إعدادات التارجت الشهري» في داشبورد دوم (monthly_targets.json)، والاحتياطي targets_config.py.
-name: 💰 [DOOM] Shifty – مبيعات الصيادلة (كل ساعة)
+# 💰 30 أكتوبر 2026 – «مبيعاتي» في شيفتي: مرة واحدة يوميًا الساعة 00:09 بتوقيت الرياض (21:09 UTC)، من أول الشهر حتى أمس.
+# بتقرا من **الكاش اليومي المشترك** (doom_trial_report/data_cache/profit_ratio.json - بيتبني 00:05 لكل تقارير MPC) = **صفر استعلام على جوليب**.
+# لو الكاش لسه مااتبنّاش: محاولتين احتياطيتين (21:25 و21:50 UTC)، وفي آخر محاولة بيتبعت بعلامة stale=True عشان شيفتي ينبّه الصيدلي بالتأخير.
+# المحاولة الاحتياطية بتتخطى لو محاولة نجحت النهارده خلاص (مرة واحدة فعليًا).
+name: 💰 [DOOM] Shifty – مبيعات الصيادلة (مرة يوميًا 00:09)
 
 on:
   workflow_dispatch:
-    inputs:
-      backfill_days:
-        description: 'عدد أيام البناء الأولي (1-93، الافتراضي 3)'
-        required: false
-        default: '3'
   schedule:
-    - cron: '17 * * * *'
+    - cron: '9 21 * * *'    # 00:09 الرياض (الأساسية)
+    - cron: '25 21 * * *'   # احتياطية لو الكاش لسه مااتبنّاش
+    - cron: '50 21 * * *'   # آخر محاولة (بتبعت stale لو الكاش متأخر)
 
 concurrency:
   group: doom-shifty-sales-push
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   push:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: هل نجحت محاولة النهارده بالفعل؟ (للجدولة الاحتياطية بس)
+        id: done
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SINCE=$(date -u -d '4 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          N=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_shifty_sales_push.yml/runs?status=success&created=%3E%3D$SINCE&per_page=5" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('total_count',0))")
+          echo "نجحات في آخر 4 ساعات: $N"
+          if [ "${N:-0}" -gt 0 ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
+        if: steps.done.outputs.skip != '1'
         with:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
-          ref: main
+          ref: claude/assortment-webhook-discovery-a4mxc6   # فرع النشر: فيه الكاش اليومي + السكربت (بيتدمج من main كل ≤30 دقيقة)
       - uses: actions/setup-python@v5
+        if: steps.done.outputs.skip != '1'
         with:
           python-version: '3.10'
-      - run: pip install requests cryptography pytz
-      - name: Push sales to Shifty
+      - if: steps.done.outputs.skip != '1'
+        run: pip install requests cryptography pytz
+      - name: Push sales to Shifty (من الكاش المشترك)
+        if: steps.done.outputs.skip != '1'
         env:
-          JULEB_URL: ${{ secrets.JULEB_URL }}
-          JULEB_DB: ${{ secrets.JULEB_DB }}
-          JULEB_USER: ${{ secrets.JULEB_USER }}
-          JULEB_PASS: ${{ secrets.JULEB_PASS }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           TARGETS_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
-          SHIFTY_SALES_DAYS: ${{ inputs.backfill_days || '3' }}
+          SHIFTY_SOURCE: cache
+          FINAL_ATTEMPT: ${{ github.event.schedule == '50 21 * * *' }}
         run: python shifty_sales_push.py
