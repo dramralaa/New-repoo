@@ -1,16 +1,16 @@
 {
- "generated_at_utc": "2026-10-30T10:50:29.319438+00:00",
+ "generated_at_utc": "2026-10-30T10:50:54.017899+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "دوم 1 - النسيم",
-   "last_check_utc": "2026-10-30T10:50:29.319438+00:00",
+   "last_check_utc": "2026-10-30T10:50:54.017899+00:00",
    "last_check_ok": true,
    "alerts": []
   },
   "2": {
    "label": "دوم 2 - ظهرة لبن (12922)",
-   "last_check_utc": "2026-10-30T10:50:29.319438+00:00",
+   "last_check_utc": "2026-10-30T10:50:54.017899+00:00",
    "last_check_ok": true,
    "alerts": []
   }
