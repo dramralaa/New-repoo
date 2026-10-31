@@ -1,0 +1,42 @@
+# 🔎 تحقيق سعر صنف (قراءة فقط من جوليب) - يدوي. المدخلات: كود الصنف ورقم الفاتورة وتاريخ الاستلام. مفيش أي كتابة ولا إرسال رسائل. الناتج في لوج الخطوة.
+name: 🔎 [DOOM] تحقيق سعر صنف (قراءة فقط - يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "كود جوليب للصنف"
+        required: true
+        default: "1001991"
+      order:
+        description: "رقم فاتورة مرجعية"
+        required: false
+        default: "PH0033/0810"
+      recv_date:
+        description: "تاريخ الاستلام (yyyy-mm-dd)"
+        required: false
+        default: "2026-09-27"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Read-only investigation
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          INV_CODE: ${{ inputs.code }}
+          INV_ORDER: ${{ inputs.order }}
+          INV_DATE: ${{ inputs.recv_date }}
+        run: python juleb_price_investigation.py
