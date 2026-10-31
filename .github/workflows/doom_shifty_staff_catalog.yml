@@ -1,0 +1,35 @@
+# 🛍️ 31 أكتوبر 2026 – كتالوج «مشتريات الموظفين» في شيفتي: يوميًا 00:40 الرياض (21:40 UTC) من باك أب الماستر المحدّث (main) + قراءة واحدة خفيفة
+# لقوايم عمولة الحوافز والعروض السارية من جوليب (قراءة بس، مرة في اليوم). مفيش أي استعلام على جوليب/المنصات وقت استخدام الصيدلي.
+name: 🛍️ [DOOM] Shifty – كتالوج مشتريات الموظفين (يوميًا)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '40 21 * * *'
+
+concurrency:
+  group: doom-shifty-staff-catalog
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography pandas pytz
+      - name: Push staff catalog to Shifty
+        env:
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python shifty_staff_catalog_push.py
