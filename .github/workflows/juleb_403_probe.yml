@@ -1,0 +1,92 @@
+# 🔍 3 نوفمبر 2026 - فحص لمرة واحدة (قراءة فقط): هل جوليب حاظر طلبات XML-RPC (403) ولا مشكلة مؤقتة؟
+# بيعمل طلب واحد بس لكل خطوة (من غير أي retry) على دوم وفيرا: /web/login ثم version ثم authenticate ثم search_count واحد.
+# النتيجة: data/health/juleb_403_probe.json في juleb-daily-report (من غير أي بيانات اعتماد).
+name: 🔍 [JULEB] فحص 403 لمرة واحدة (قراءة فقط)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-403-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe
+        env:
+          D_URL: ${{ secrets.JULEB_URL }}
+          D_DB: ${{ secrets.JULEB_DB }}
+          D_USER: ${{ secrets.JULEB_USER }}
+          D_PASS: ${{ secrets.JULEB_PASS }}
+          V_URL: ${{ secrets.VERA_URL }}
+          V_DB: ${{ secrets.VERA_DB }}
+          V_USER: ${{ secrets.VERA_USER }}
+          V_PASS: ${{ secrets.VERA_PASS }}
+        run: |
+          python - <<'PY'
+          import json, os, re, time, xmlrpc.client
+          from datetime import datetime, timezone
+          import requests
+          KEEP = ("server", "via", "cf-ray", "cf-cache-status", "x-cache", "retry-after", "content-type", "x-powered-by", "x-request-id", "date")
+          def snap(r):
+              b = (r.text or "")[:300].replace("\n", " ")
+              b = re.sub(r"[A-Za-z0-9+/=_-]{32,}", "<redacted>", b)
+              return {"status": r.status_code, "elapsed_s": round(r.elapsed.total_seconds(), 2),
+                      "headers": {k: v for k, v in r.headers.items() if k.lower() in KEEP}, "body": b}
+          def rpc(url, path, method, params):
+              body = xmlrpc.client.dumps(params, methodname=method)
+              try:
+                  r = requests.post(f"{url}/xmlrpc/2/{path}", data=body, headers={"Content-Type": "text/xml"}, timeout=25)
+                  out = snap(r)
+                  try:
+                      out["result"] = xmlrpc.client.loads(r.content)[0][0] if r.status_code == 200 else None
+                  except Exception as e:  # noqa: BLE001
+                      out["parse_error"] = str(e)[:100]
+                  return out
+              except Exception as e:  # noqa: BLE001
+                  return {"exception": f"{type(e).__name__}: {str(e)[:150]}"}
+          res = {"when_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+          try:
+              res["runner_ip"] = requests.get("https://api.ipify.org", timeout=10).text.strip()
+          except Exception as e:  # noqa: BLE001
+              res["runner_ip"] = f"? {type(e).__name__}"
+          for name, p in (("doom", "D"), ("vera", "V")):
+              url = os.environ[p + "_URL"].rstrip("/")
+              db, user, pw = os.environ[p + "_DB"], os.environ[p + "_USER"], os.environ[p + "_PASS"]
+              o = {}
+              try:
+                  o["web_login"] = snap(requests.get(f"{url}/web/login", timeout=25))
+              except Exception as e:  # noqa: BLE001
+                  o["web_login"] = {"exception": f"{type(e).__name__}: {str(e)[:150]}"}
+              o["version"] = rpc(url, "common", "version", ())
+              au = rpc(url, "common", "authenticate", (db, user, pw, {}))
+              uid = au.pop("result", None)
+              au["uid_ok"] = bool(uid)
+              o["authenticate"] = au
+              if uid:
+                  o["search_count"] = rpc(url, "object", "execute_kw", (db, uid, pw, "res.users", "search_count", [[]]))
+              res[name] = o
+              time.sleep(2)
+          os.makedirs("data/health", exist_ok=True)
+          json.dump(res, open("data/health/juleb_403_probe.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          print(json.dumps(res, ensure_ascii=False, indent=1))
+          PY
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/health/juleb_403_probe.json || true
+          git diff --cached --quiet || { git commit -m "🔍 نتيجة فحص 403 جوليب [vercel skip]" && timeout 60 git push || { timeout 60 git fetch origin main && git rebase origin/main && timeout 60 git push; }; }
