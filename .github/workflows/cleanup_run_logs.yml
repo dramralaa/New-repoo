@@ -1,0 +1,31 @@
+name: 🧹 تنظيف سجلات التشغيل (ريبو عام)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-run-logs
+  cancel-in-progress: false
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: مسح السجلات القديمة
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CUT=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          for page in 1 2 3 4 5 6; do
+            ids=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100&status=completed&created=<$CUT" --jq '.workflow_runs[].id')
+            [ -z "$ids" ] && break
+            echo "$ids" | xargs -P 4 -I{} sh -c 'gh api -X DELETE repos/${{ github.repository }}/actions/runs/{} >/dev/null 2>&1'
+          done
+          echo "تم"

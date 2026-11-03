@@ -1,0 +1,30 @@
+name: 🔗 [VERA] Jahez Sync (يدوي/fallback - الجدولة الحقيقية في vera_sync_loop_jahez.yml)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Sync (dry-run unless VERA_JAHEZ_WRITE_ENABLED=1)
+        env:
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_JAHEZ_WRITE_ENABLED: ${{ secrets.VERA_JAHEZ_WRITE_ENABLED }}
+        run: python vera_jahez_sync.py
+      - name: Commit result back
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vera_jahez_sync.json
+          git diff --cached --quiet && echo "No changes" || (git commit -m "🔗 نتيجة مزامنة جاهز فيرا [vercel skip]" && git pull --rebase && git push)

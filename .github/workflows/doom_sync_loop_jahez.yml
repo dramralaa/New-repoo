@@ -1,0 +1,137 @@
+name: 🔁 [DOOM] Sync Loop - Jahez (أسعار/أرصدة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 * * * *'
+
+concurrency:
+  group: doom-sync-loop-jahez
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz requests
+      - name: Continuous sync loop (~5.5 ساعة، بيتجدد ذاتيًا بعدها)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          STOCK_MAX_AGE_MIN: '120'
+          SNAPSHOT_LIVE_FALLBACK: '0'
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+
+          START=$(date +%s)
+          DURATION=$((340 * 60))
+          ITER=0
+
+          run_with_health() {
+            local name="$1" script="$2" timeout_sec="$3"
+            local outfile="/tmp/${name}_output.log"
+            local code=0
+            if ! python platform_guard.py check "$name"; then return 0; fi
+            rm -f "/tmp/${name}_meter.json"
+            PYTHONPATH="$PWD/platform_meter_boot${PYTHONPATH:+:$PYTHONPATH}" PLATFORM_METER_FILE="/tmp/${name}_meter.json" \
+              timeout "$timeout_sec" python "$script" > "$outfile" 2>&1 || code=$?
+            [ $code -eq 124 ] && ANY_TIMEOUT=1
+            if [ $code -eq 0 ]; then
+              tail -5 "$outfile"
+            else
+              echo "⚠️ $name فشل (exit=$code) - آخر 20 سطر من الناتج:"
+              tail -20 "$outfile"
+            fi
+            python sync_health_recorder.py "$name" "$code" "$outfile"
+          }
+
+          commit_and_push() {
+            git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
+            if git diff --cached --quiet; then
+              echo "لا يوجد تغيير فعلي في هذه الدورة."
+              return 0
+            fi
+            git commit -m "🔁 جاهز - دورة #$ITER ($(date -u +%H:%M) UTC) [vercel skip]"
+            for i in 1 2 3 4 5; do
+              if timeout 60 git push; then
+                echo "✅ Push نجح (دورة $ITER، محاولة $i)"
+                return 0
+              fi
+              echo "⚠️ Push فشل (دورة $ITER، محاولة $i) - إعادة محاولة بعد rebase"
+              timeout 60 git fetch origin main
+              if ! git rebase origin/main; then
+                git checkout --theirs data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
+                git add data/jahez_sync.json data/health/jahez.json data/jahez_compensation_audit.json data/jahez_reconciliation_detail.json data/jahez_timed_out_orders.json 2>/dev/null || true
+                git rebase --continue || git rebase --abort
+              fi
+              sleep $((i * 3))
+            done
+            echo "::error::فشل push دورة $ITER نهائيًا بعد 5 محاولات - هنكمل باقي اللوب برضه"
+          }
+
+          SLOTS="2 7 12 14 16 18 20 22"
+          OFFSET_MIN=35
+          secs_to_next_slot() { local rn=$(( $(date -u +%s) + 10800 )); local day=$(( rn / 86400 * 86400 )); local d h t; for d in 0 86400; do for h in $SLOTS; do t=$(( day + d + h*3600 + OFFSET_MIN*60 )); if [ $t -gt $(( rn + 30 )) ]; then echo $(( t - rn )); return; fi; done; done; }
+          secs_since_slot() { local rn=$(( $(date -u +%s) + 10800 )); local day=$(( rn / 86400 * 86400 )); local best=999999 d h t; for d in -86400 0; do for h in $SLOTS; do t=$(( day + d + h*3600 + OFFSET_MIN*60 )); if [ $t -le $rn ] && [ $(( rn - t )) -lt $best ]; then best=$(( rn - t )); fi; done; done; echo $best; }
+          SKIP_ALL=0
+          if [ "$(secs_since_slot)" -gt 1500 ]; then
+            W=$(secs_to_next_slot); [ "$W" -gt $(( DURATION - 120 )) ] && W=$(( DURATION - 120 ))
+            echo "⏳ مش في ميعاد دورة - هنستنى $W ثانية لأقرب موعد"
+            sleep $W
+            [ "$(secs_since_slot)" -gt 1500 ] && SKIP_ALL=1
+          fi
+
+          while [ "$SKIP_ALL" != "1" ]; do
+            ITER=$((ITER + 1))
+            timeout 60 git fetch -q origin main && git reset -q --hard origin/main || echo "⚠️ تعذّر تحديث النسخة - هنكمل بالموجود"
+            echo "════════ جاهز - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
+
+            run_with_health jahez jahez_sync_run.py 900
+
+            commit_and_push
+
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START))
+            if [ $ELAPSED -ge $DURATION ]; then
+              echo "انتهت نافذة الـ~5.5 ساعة (${ITER} دورة) - هيتعمل self-relaunch في الخطوة الجاية."
+              break
+            fi
+
+            SLEEP=$(secs_to_next_slot)   # أقرب موعد دورة (6 بعد الظهر لمنتصف الليل + 2 باقي اليوم)
+            ANY_TIMEOUT=0
+            REMAINING=$((DURATION - ELAPSED))
+            if [ $SLEEP -gt $REMAINING ]; then
+              SLEEP=$REMAINING
+            fi
+            echo "نايم $SLEEP ثانية قبل الدورة الجاية..."
+            sleep $SLEEP
+            [ $(( $(date +%s) - START )) -ge $DURATION ] && break
+          done
+      - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
+        if: always()
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_sync_loop_jahez.yml/dispatches" \
+            -d '{"ref":"main"}'

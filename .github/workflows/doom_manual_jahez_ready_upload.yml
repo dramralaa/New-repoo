@@ -1,0 +1,53 @@
+name: 📤 [DOOM] رفع يدوي - أصناف جاهز الجاهزة (باركود + صورة)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "فاضي = الكتالوج الرئيسي | supplier = قايمة المورد (24 أكتوبر)"
+        default: ""
+      max_items:
+        default: "100000"
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run jahez_upload_ready_batch.py
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          SOURCE: ${{ inputs.source }}
+          MAX_ITEMS: ${{ inputs.max_items }}
+        run: |
+          git config user.name "3PI Automation"
+          git config user.email "automation@3pi.local"
+          python3 jahez_upload_ready_batch.py
+      - name: Commit and push result log
+        run: |
+          git add data/jahez_ready_batch_result.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير في سجل النتيجة."
+            exit 0
+          fi
+          git commit -m "📤 نتيجة رفع دفعة أصناف جاهز الجاهزة (يدوي) [vercel skip]"
+          for i in 1 2 3; do
+            if timeout 60 git push; then
+              exit 0
+            fi
+            timeout 60 git fetch origin main
+            git merge origin/main --no-edit || true
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push سجل نتيجة الرفع بعد 3 محاولات"

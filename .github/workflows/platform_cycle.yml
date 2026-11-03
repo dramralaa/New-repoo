@@ -1,0 +1,60 @@
+name: 🔁 [DOOM+VERA] دورة المنصات (لقطة → هنجر → جاهز)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 23,9,13,17 * * *'
+    - cron: '0 4,11,15,19 * * *'
+
+concurrency:
+  group: platform-cycle
+  cancel-in-progress: false
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz requests
+      - name: دورة المنصات
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          PLATFORM_WITH_JAHEZ: ${{ (github.event_name == 'workflow_dispatch' || github.event.schedule == '0 4,11,15,19 * * *') && '1' || '0' }}
+          STOCK_MAX_AGE_MIN: '120'
+          SNAPSHOT_LIVE_FALLBACK: '0'
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          HS_PRICE_WRITE_ENABLED: ${{ secrets.HS_PRICE_WRITE_ENABLED }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+          VERA_HS_WRITE_ENABLED: ${{ secrets.VERA_HS_WRITE_ENABLED }}
+          VERA_HS_PRICE_WRITE_ENABLED: ${{ secrets.VERA_HS_PRICE_WRITE_ENABLED }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          JAHEZ_WRITE_ENABLED: ${{ secrets.JAHEZ_WRITE_ENABLED }}
+          VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
+          VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
+          VERA_JAHEZ_WRITE_ENABLED: ${{ secrets.VERA_JAHEZ_WRITE_ENABLED }}
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: bash scripts/platform_cycle.sh

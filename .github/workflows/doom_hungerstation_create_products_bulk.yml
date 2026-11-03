@@ -1,0 +1,95 @@
+name: HS Create Products Bulk (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Optional live Bearer token (empty = use the trusted portal session from secrets)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max barcodes to process (start with 1 to test a single item and confirm visually on the portal first!)'
+        required: false
+        default: '1'
+      active_default:
+        description: 'Default active flag for new items (false = catalog depth only, true = orderable immediately)'
+        required: false
+        default: 'false'
+      vendor_id:
+        description: 'HungerStation platformVendorId (store) to push the catalog to'
+        required: false
+        default: '186329'
+      brand:
+        description: 'Catalog source: DOOM or VERA'
+        required: false
+        default: 'DOOM'
+      include_medicine:
+        description: 'VERA only: 1 = include non-prescription medicines'
+        required: false
+        default: '0'
+      skip_medicine:
+        description: 'DOOM_LIVE: 1 = exclude every MEDICINE item from this run'
+        required: false
+        default: '1'
+      recheck_existing:
+        description: '1 = re-check barcodes previously reported as already in store'
+        required: false
+        default: '0'
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography
+      - name: Create products bulk on Hungerstation
+        env:
+          HS_TOKEN: ${{ github.event.inputs.token }}
+          MAX_BARCODES: ${{ github.event.inputs.limit }}
+          ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
+          HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
+          HS_BRAND: ${{ github.event.inputs.brand }}
+          HS_INCLUDE_MEDICINE: ${{ github.event.inputs.include_medicine }}
+          SKIP_MEDICINE: ${{ github.event.inputs.skip_medicine }}
+          RECHECK_EXISTING: ${{ github.event.inputs.recheck_existing }}
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
+          VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
+        run: python hungerstation_create_products_bulk.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/hungerstation_create_products_result*.json data/hs_portal_device_*.enc 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "لا يوجد تغيير في ملف النتيجة."
+            exit 0
+          fi
+          git commit -m "Hungerstation CreateProductsBulk result [vercel skip]"
+          for i in 1 2 3 4 5; do
+            if timeout 60 git push origin HEAD:main; then
+              echo "✅ Push نجح (محاولة $i)"
+              exit 0
+            fi
+            echo "⚠️ Push فشل (محاولة $i) - إعادة محاولة بعد rebase"
+            timeout 60 git fetch origin main
+            if ! git rebase origin/main; then
+              git checkout --theirs data/hungerstation_create_products_result*.json 2>/dev/null || true
+              git add data/hungerstation_create_products_result*.json data/hs_portal_device_*.enc 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((i * 3))
+          done
+          echo "::error::فشل push نتيجة الرفع بعد 5 محاولات"

@@ -1,0 +1,76 @@
+name: 📦 [DOOM+VERA] تخزين مبيعات شهر مقفول
+
+on:
+  schedule:
+    - cron: '20 7 1 * *'
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: 'DOOM أو VERA أو BOTH'
+        required: true
+        default: 'BOTH'
+      ym:
+        description: 'الشهر YYYY-MM (فاضي = الشهر اللي فات)'
+        required: false
+        default: ''
+      confirm:
+        description: 'اكتب APPROVED (قراءة جوليب مرة واحدة - بموافقة صاحب المشروع)'
+        required: true
+        default: ''
+
+concurrency:
+  group: month-sales-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: تأكيد (يدوي فقط)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm != 'APPROVED'
+        run: |
+          echo "اكتب APPROVED في خانة التأكيد"
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: سحب وتخزين
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          IN_BRAND: ${{ github.event.inputs.brand }}
+          IN_YM: ${{ github.event.inputs.ym }}
+        run: |
+          YM="$IN_YM"
+          if [ -z "$YM" ]; then YM=$(date -u -d "$(date -u +%Y-%m-01) -1 day" +%Y-%m); fi
+          B="${IN_BRAND:-BOTH}"
+          if [ "$B" = "BOTH" ]; then BR="DOOM VERA"; else BR="$B"; fi
+          for b in $BR; do
+            BRAND=$b YM=$YM python month_sales_snapshot.py || echo "::warning::$b $YM فشل"
+            sleep 30
+          done
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          git add data/month_sales/*.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -q -m "📦 لقطة مبيعات شهر مقفول [vercel skip]"
+          for i in 1 2 3 4 5; do
+            timeout 60 git pull -q --rebase origin main && timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done

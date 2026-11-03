@@ -1,0 +1,74 @@
+name: 🛵 [HS] مطابقة طلبات هنجرستيشن مع جوليب (مرة كل 24 ساعة؛ تشغيلات المتصفح من الكاش)
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [hs_orders_pushed]
+  schedule:
+    - cron: '23 6 * * *'
+
+concurrency:
+  group: hs-orders-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography pytz
+      - name: Sync
+        env:
+          HS_ORDERS_SOURCE: file
+          HS_JULEB_MIN_GAP_MIN: '1380'
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
+          VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
+          HS_CHAIN_ID: ${{ secrets.HS_CHAIN_ID }}
+          VERA_HS_CHAIN_ID: ${{ secrets.VERA_HS_CHAIN_ID }}
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+          VERA_URL: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_USER: ${{ secrets.VERA_USER }}
+          VERA_PASS: ${{ secrets.VERA_PASS }}
+          PUSHED: ${{ toJson(github.event.client_payload.orders) }}
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            printf '%s' "$PUSHED" > /tmp/pushed.json
+            export HS_PUSHED_FILE=/tmp/pushed.json
+            python shifty_hs_order_ingest.py /tmp/pushed.json
+          fi
+          python hs_orders_sync.py
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/s
+          for f in data/hs_orders_recon.json data/hs_orders_recon_error.json data/hs_orders_raw.json data/hs_juleb_invoices_DOOM.json data/hs_juleb_invoices_VERA.json; do [ -f "$f" ] && cp "$f" /tmp/s/; done
+          ls /tmp/s/* >/dev/null 2>&1 || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/s/* data/ && git add data/hs_orders_recon*.json data/hs_orders_raw.json data/hs_juleb_invoices_*.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🛵 طلبات هنجرستيشن ومطابقتها [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
+

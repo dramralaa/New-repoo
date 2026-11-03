@@ -1,0 +1,25 @@
+name: 📦 [DOOM] Daily Inventory Report (كل 3 أيام)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 */5 * *'
+
+jobs:
+  doom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Run Inventory Report - DOOM
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python daily_inventory_report_engine.py DOOM

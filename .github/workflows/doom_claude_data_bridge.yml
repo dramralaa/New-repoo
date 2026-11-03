@@ -1,0 +1,44 @@
+name: 🤖 [DOOM] Claude Data Bridge (كل ساعتين - بيانات ثانوية بطيئة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */2 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install pytz
+      - name: Export Data Snapshot for Claude
+        env:
+          JULEB_URL: ${{ secrets.JULEB_URL }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_USER: ${{ secrets.JULEB_USER }}
+          JULEB_PASS: ${{ secrets.JULEB_PASS }}
+        run: python claude_data_bridge.py
+      - name: Build Financial Dashboard Data
+        run: python build_financial_dashboard_data.py
+      - name: Hungerstation manual-invoice price audit (note-linked orders)
+        run: python hungerstation_invoice_price_audit.py
+      - name: Commit & Push
+        run: |
+          git config user.name "Juleb Bot"
+          git config user.email "bot@juleb.local"
+          git add data/ docs/financial_dashboard_data.json
+          git diff --staged --quiet && exit 0
+          git commit -q -m "🤖 تحديث بيانات Claude Data Bridge اليومي"
+          for i in 1 2 3 4 5; do
+            timeout 60 git pull --rebase -X theirs -q origin main || { git rebase --abort 2>/dev/null; sleep $((i * 3)); continue; }
+            timeout 60 git push && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

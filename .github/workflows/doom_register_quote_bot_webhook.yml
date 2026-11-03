@@ -1,0 +1,54 @@
+name: 🔗 [DOOM] Register Quote Bot Webhook (manual, one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set webhook with Telegram
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+        run: |
+          TOKEN="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          echo "طول التوكن بعد التنظيف: ${#TOKEN} حرف"
+          set +e
+          RESPONSE=$(curl -sS -X POST "https://api.telegram.org/bot${TOKEN}/setWebhook" \
+            -d "url=https://juleb-dashboard.vercel.app/api/quote_bot" \
+            -d "drop_pending_updates=true")
+          CURL_EXIT=$?
+          set -e
+          echo "curl exit code: $CURL_EXIT"
+          echo "$RESPONSE"
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "::error::فشل استدعاء تيليجرام (curl exit $CURL_EXIT)"
+            exit 1
+          fi
+          echo "$RESPONSE" | grep -q '"ok":true' || (echo "::error::فشل تسجيل الـwebhook" && exit 1)
+      - name: Confirm webhook info
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+        run: |
+          TOKEN="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          curl -sS "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
+      - name: تشخيص - مقارنة هوية بوت TELEGRAM_TOKEN_DOOM مع TELEGRAM_TOKEN العادي
+        env:
+          TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: |
+          T1="$(printf '%s' "$TELEGRAM_TOKEN_DOOM" | tr -d '[:space:]')"
+          T2="$(printf '%s' "$TELEGRAM_TOKEN" | tr -d '[:space:]')"
+          echo "🤖 هوية بوت TELEGRAM_TOKEN_DOOM (اللي البوت مسجّل عليه):"
+          curl -sS "https://api.telegram.org/bot${T1}/getMe" | python3 -c "import json,sys; d=json.load(sys.stdin)['result']; print('   username: @' + d['username'], '| id:', d['id'])"
+          if [ -n "$T2" ]; then
+            echo "🤖 هوية بوت TELEGRAM_TOKEN (المستخدم في تنبيهات هنجرستيشن/جاهز):"
+            curl -sS "https://api.telegram.org/bot${T2}/getMe" | python3 -c "import json,sys; d=json.load(sys.stdin)['result']; print('   username: @' + d['username'], '| id:', d['id'])"
+            if [ "$T1" = "$T2" ]; then
+              echo "✅ نفس التوكن بالظبط - بوت واحد."
+            else
+              echo "⚠️ توكنين مختلفين - لو الـusername مختلف يبقى فعلاً 2 بوت منفصلين."
+            fi
+          else
+            echo "ℹ️ TELEGRAM_TOKEN مش موجود كسر في New-repoo."
+          fi

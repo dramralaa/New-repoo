@@ -1,0 +1,39 @@
+name: 🕵️ [DOOM] Hungerstation Writer Drift Audit (كل ساعتين)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout juleb-daily-report
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Audit who is writing to the DOOM catalog
+        env:
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python hungerstation_writer_drift_audit.py
+      - name: Commit findings back to juleb-daily-report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/hungerstation_writer_drift_log.json \
+                  data/hungerstation_writer_drift_latest.json \
+                  data/hungerstation_drift_prev_fingerprint.json
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -q -m "🕵️ تدقيق الكتابة على كتالوج هنجرستيشن [vercel skip]"
+          for i in 1 2 3 4 5; do
+            git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0
+            sleep $((i * 4))
+          done
+          exit 1
