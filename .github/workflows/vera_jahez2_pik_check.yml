@@ -1,0 +1,24 @@
+name: vera-jahez2-pik-check
+on:
+  workflow_dispatch:
+concurrency:
+  group: vera-jahez2-pik-check
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: read-only check
+        env:
+          JAHEZ2_JWT_TOKEN: ${{ secrets.JAHEZ2_JWT_TOKEN }}
+        run: python vera_jahez2_pik_check.py
