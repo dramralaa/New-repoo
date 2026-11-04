@@ -1,0 +1,34 @@
+name: vera-jahez2-probe
+on:
+  workflow_dispatch:
+concurrency:
+  group: vera-jahez2-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: read-only probe
+        env:
+          JAHEZ2_JWT_TOKEN: ${{ secrets.JAHEZ2_JWT_TOKEN }}
+          JAHEZ2_PVT_TOKEN: ${{ secrets.JAHEZ2_PVT_TOKEN }}
+          JAHEZ2_USER_ID: ${{ secrets.JAHEZ2_USER_ID }}
+        run: python vera_jahez2_probe.py
+      - name: save catalog (private repo)
+        if: success()
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add data/vera_jahez2_catalog.json data/vera_jahez2_probe.json
+          git diff --cached --quiet && exit 0
+          git commit -q -m "vera jahez2 probe [vercel skip]"
+          for i in 1 2 3; do git push -q origin HEAD:main && break; git fetch -q origin main && git rebase -q origin/main; sleep 3; done
