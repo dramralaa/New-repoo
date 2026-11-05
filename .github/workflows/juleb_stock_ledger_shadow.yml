@@ -1,0 +1,64 @@
+# 📒 5 نوفمبر 2026 - دفتر رصيد دوم بالـAPI الرسمي (وضع ظل - مابيغذّيش المنصات): كل ساعتين بالنهار (الرياض 08:00–22:00)، ~40 طلب GET في الدورة (قراءة فقط).
+# الحالة في Actions cache (مش في الريبو العام). قاطع تلقائي عند 429. بيكتب data/stock_balance_api_shadow.json + data/stock_shadow_accuracy.json في juleb-daily-report.
+# التحويل من الملف اليدوي للدفتر بيتم بعد ما الدقة تتثبّت على أول ملف أساس جديد (stock_shadow_accuracy.json).
+name: 📒 [DOOM] دفتر الرصيد بالـAPI (ظل)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '40 5-19/2 * * *'
+
+concurrency:
+  group: juleb-stock-ledger-shadow
+  cancel-in-progress: false
+
+jobs:
+  ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Restore ledger state
+        uses: actions/cache@v4
+        with:
+          path: .ledger_state.json
+          key: ledger-state-${{ github.run_id }}
+          restore-keys: |
+            ledger-state-
+      - name: Ledger
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          PROBE_BRAND: doom
+          STATE_PATH: .ledger_state.json
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          python juleb_api_stock_ledger.py
+      - name: Commit shadow result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/out
+          for f in data/stock_balance_api_shadow.json data/stock_shadow_accuracy.json; do [ -f "$f" ] && cp "$f" /tmp/out/; done
+          ls /tmp/out/* >/dev/null 2>&1 || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/* data/
+            git add data/stock_balance_api_shadow.json data/stock_shadow_accuracy.json 2>/dev/null || true
+            if git diff --cached --quiet; then echo "لا تغيير"; exit 0; fi
+            git commit -q -m "📒 دفتر الرصيد بالـAPI (ظل) [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
