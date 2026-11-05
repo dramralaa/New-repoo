@@ -32,12 +32,24 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install requests
-      - name: Probe
+      - name: Select brand key (strict - no cross-brand fallback)
         env:
-          PROBE_BRAND: ${{ github.event.inputs.brand }}
-          EXPLORE_SET: ${{ github.event.inputs.mode == 'explore2' && '2' || '' }}
-          JULEB_API_BASE: ${{ github.event.inputs.brand == 'vera' && 'https://phvera.juleb.com/api/v1' || 'https://medova.juleb.com/api/v1' }}
-          JULEB_API_KEY: ${{ github.event.inputs.brand == 'vera' && secrets.JULEB_API_KEY_VERA || secrets.JULEB_API_KEY_DOOM }}
+          BRAND: ${{ github.event.inputs.brand }}
+          DOOM_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          VERA_KEY: ${{ secrets.JULEB_API_KEY_VERA }}
+        run: |
+          case "$BRAND" in
+            doom) K="$DOOM_KEY"; B="https://medova.juleb.com/api/v1" ;;
+            vera) K="$VERA_KEY"; B="https://phvera.juleb.com/api/v1" ;;
+            *) echo "brand لازم doom أو vera"; exit 1 ;;
+          esac
+          [ -n "$K" ] || { echo "⛔ مفتاح $BRAND غير موجود في Secrets - توقف قبل أي اتصال"; exit 1; }
+          echo "::add-mask::$K"
+          echo "JULEB_API_KEY=$K" >> "$GITHUB_ENV"
+          echo "JULEB_API_BASE=$B" >> "$GITHUB_ENV"
+          echo "PROBE_BRAND=$BRAND" >> "$GITHUB_ENV"
+          echo "EXPLORE_SET=${{ github.event.inputs.mode == 'explore2' && '2' || '' }}" >> "$GITHUB_ENV"
+      - name: Probe
         run: python ${{ github.event.inputs.mode == 'validate' && 'juleb_api_stock_validate.py' || (github.event.inputs.mode == 'explore' || github.event.inputs.mode == 'explore2') && 'juleb_api_explore.py' || 'juleb_api_probe.py' }}
       - name: Commit result
         if: always()
