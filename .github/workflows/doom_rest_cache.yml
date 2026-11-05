@@ -7,9 +7,9 @@ on:
     inputs:
       req_cap:
         description: 'سقف طلبات GET في التشغيلة'
-        default: '2500'
+        default: '500'
   schedule:
-    - cron: '20 4,10,16,21 * * *'
+    - cron: '20 4-21 * * *'
 
 concurrency:
   group: doom-rest-cache
@@ -41,7 +41,7 @@ jobs:
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
           PROBE_BRAND: doom
-          REQ_CAP: ${{ inputs.req_cap || '2500' }}
+          REQ_CAP: ${{ inputs.req_cap || '500' }}
           STORE_PATH: data/rest_store/pos_store.json
           REST_STORE_PATH: data/rest_store/pos_store.json
         run: |
