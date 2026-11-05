@@ -50,7 +50,7 @@ jobs:
           echo "PROBE_BRAND=$BRAND" >> "$GITHUB_ENV"
           echo "EXPLORE_SET=${{ github.event.inputs.mode == 'explore2' && '2' || '' }}" >> "$GITHUB_ENV"
       - name: Probe
-        run: python ${{ github.event.inputs.mode == 'research' && 'juleb_api_research.py' || github.event.inputs.mode == 'validate' && 'juleb_api_stock_validate.py' || (github.event.inputs.mode == 'explore' || github.event.inputs.mode == 'explore2') && 'juleb_api_explore.py' || 'juleb_api_probe.py' }}
+        run: python ${{ github.event.inputs.mode == 'research2' && 'juleb_api_research2.py' || github.event.inputs.mode == 'research' && 'juleb_api_research.py' || github.event.inputs.mode == 'validate' && 'juleb_api_stock_validate.py' || (github.event.inputs.mode == 'explore' || github.event.inputs.mode == 'explore2') && 'juleb_api_explore.py' || 'juleb_api_probe.py' }}
       - name: Commit result
         if: always()
         run: |
