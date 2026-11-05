@@ -1,0 +1,66 @@
+# 🗄️ 5 نوفمبر 2026 - تجديد كاشات داشبورد دوم (target/hourly/category/profit/forecast) عبر الـAPI الرسمي (قراءة فقط) بدل XML-RPC المقفول.
+# يسحب الأوردرات الجديدة فقط (مخزن تراكمي في الريبو الخاص) ثم يدمجها مع الكاش القديم. قاطع تلقائي عند 401/403/429. ما بيطبعش أي قيم.
+name: 🗄️ [DOOM] كاش الداشبورد بالـAPI الرسمي
+
+on:
+  workflow_dispatch:
+    inputs:
+      req_cap:
+        description: 'سقف طلبات GET في التشغيلة'
+        default: '2500'
+  schedule:
+    - cron: '20 4,10,16,21 * * *'
+
+concurrency:
+  group: doom-rest-cache
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - name: Bring in latest main scripts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch -q origin main && git merge -q --no-edit origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Sync store + build caches
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          PROBE_BRAND: doom
+          REQ_CAP: ${{ inputs.req_cap || '2500' }}
+          STORE_PATH: data/rest_store/pos_store.json
+          REST_STORE_PATH: data/rest_store/pos_store.json
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          python juleb_rest_store.py
+          cd doom_trial_report && python rest_cache_run.py || echo "⚠️ بناء الكاش لم يكتمل (المخزن لسه بيتكمّل أو خطأ)"
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/rest_store/pos_store.json doom_trial_report/data_cache/*.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "لا تغيير"; exit 0; }
+          git commit -q -m "🗄️ كاش الداشبورد بالـAPI الرسمي [vercel skip]"
+          for i in 1 2 3 4 5; do
+            timeout 60 git push && exit 0
+            timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
+            git rebase -X theirs origin/claude/assortment-webhook-discovery-a4mxc6 || git rebase --abort
+            sleep $((i*3))
+          done
+          exit 1
