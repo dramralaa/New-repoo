@@ -36,6 +36,7 @@ jobs:
           PROBE_BRAND: doom
           REQ_CAP: '80'
           STATIC_TTL: '3600'
+          STORE_BACKFILL_FROM: '2026-10-31 21:00:00'   # مرة واحدة: أول 3 ساعات من 1 نوفمبر بتوقيت الرياض (علامة backfill_done)
           STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
           REST_STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
         run: |
