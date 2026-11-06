@@ -42,8 +42,8 @@ jobs:
           JULEB_API_BASE: https://medova.juleb.com/api/v1
           PROBE_BRAND: doom
           REQ_CAP: ${{ inputs.req_cap || '250' }}
-          STORE_PATH: data/rest_store/pos_store.json
-          REST_STORE_PATH: data/rest_store/pos_store.json
+          STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
+          REST_STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
         run: |
           [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
           case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
