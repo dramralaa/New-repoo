@@ -79,8 +79,12 @@ jobs:
             FILES=(doom_trial_report/data_cache/live_days.json)
             YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
             CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio.json')).get('end_date',''))" 2>/dev/null)
-            if [ "$CUR" != "$YEST" ]; then
-              echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء مرة واحدة"
+            # إعادة بناء تانية الصبح (8-10 الرياض): تكلفة بنود سيشنات الليل بتتحسب بعد قفلها فبنعيد البناء بعد ما المخزن يستكمل التكلفة
+            HH=$((10#$(TZ=Asia/Riyadh date +%H))); MARK=/tmp/morning_rebuild_$(TZ=Asia/Riyadh date +%F)
+            NEED=0; [ "$CUR" != "$YEST" ] && NEED=1
+            if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
+            if [ $NEED -eq 1 ]; then
+              echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء"
               if (cd doom_trial_report && python rest_cache_run.py); then
                 FILES+=(doom_trial_report/data_cache/*.json data/rest_store/pos_store.json)
               else
