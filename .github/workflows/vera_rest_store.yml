@@ -1,0 +1,64 @@
+# 🗄️ 6 نوفمبر 2026 - مخزن طلبات فيرا بالـAPI الرسمي (قراءة فقط، منفصل تمامًا عن دوم: مفتاح/دومين/ملف مخزن مختلف). يدوي بس.
+# mode=measure: ~10 طلبات (حجم الأوردرات لآخر 7 أيام + الشركات) - الأرقام بتتحفظ في data/juleb_api/vera_volume.json.
+# mode=pull: سحب أوردرات فيرا (نفس بطء دوم: 3 ثواني/طلب، سقف REQ_CAP) → data/rest_store/vera_pos_store.json. لا يحتوي أي ذكر لدوم.
+name: 🗄️ [VERA] مخزن الطلبات بالـAPI الرسمي (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'measure أو pull'
+        default: 'measure'
+      req_cap:
+        description: 'سقف الطلبات (pull)'
+        default: '300'
+      since:
+        description: 'تاريخ بداية السحب (pull)'
+        default: '2026-11-01'
+
+concurrency:
+  group: vera-rest-store
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: main
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Run
+        env:
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_VERA }}
+          JULEB_API_BASE: https://phvera.juleb.com/api/v1
+          PROBE_BRAND: vera
+          STORE_PATH: ${{ github.workspace }}/data/rest_store/vera_pos_store.json
+          MEASURE_ONLY: ${{ inputs.mode == 'measure' && '1' || '0' }}
+          REQ_CAP: ${{ inputs.req_cap || '300' }}
+          STORE_SINCE: ${{ inputs.since || '2026-11-01' }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح فيرا غير موجود"; exit 1; }
+          python juleb_rest_store.py
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/juleb_api/vera_volume.json data/rest_store/vera_pos_store.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "لا تغيير"; exit 0; }
+          git commit -q -m "🗄️ مخزن فيرا بالـAPI [vercel skip]"
+          for i in 1 2 3 4 5; do
+            timeout 60 git push origin HEAD:main && exit 0
+            timeout 60 git fetch origin main
+            git rebase -X theirs origin/main || git rebase --abort
+            sleep $((i*3))
+          done
+          exit 1
