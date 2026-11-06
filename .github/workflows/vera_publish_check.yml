@@ -1,0 +1,19 @@
+# 🔎 فحص صلاحية CROSS_REPO_TOKEN على ريبو فيرا الخاص (قراءة فقط، يدوي): بيطبع كود الاستجابة وهل التوكن يقدر يكتب، من غير أي قيم سرية.
+name: 🔎 فحص صلاحية نشر ملف فيرا (يدوي)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check
+        env:
+          T: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: |
+          [ -n "$T" ] || { echo "CROSS_REPO_TOKEN غير موجود"; exit 1; }
+          curl -s -o /tmp/r.json -w "http=%{http_code}\n" -H "Authorization: token $T" -H "Accept: application/vnd.github+json" https://api.github.com/repos/dramralaa/vera-repo
+          python3 -c "import json;d=json.load(open('/tmp/r.json'));print('private=',d.get('private'),'permissions=',d.get('permissions'),'message=',d.get('message'))"
+          curl -s -o /dev/null -w "branches http=%{http_code}\n" -H "Authorization: token $T" https://api.github.com/repos/dramralaa/vera-repo/branches/live-data
