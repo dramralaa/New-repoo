@@ -32,6 +32,7 @@ jobs:
         env:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_KEY_VERA: ${{ secrets.JULEB_API_KEY_VERA }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
           PROBE_BRAND: doom
           REQ_CAP: '80'
@@ -77,6 +78,15 @@ jobs:
             fi
             (cd doom_trial_report && python live_refresh.py) || echo "⚠️ تحديث LIVE ما تمش"
             FILES=(doom_trial_report/data_cache/live_days.json)
+            # فيرا: بالتتابع بعد السحب الأول (ممنوع سحب متوازي) - سحب خفيف (≤40 طلب) ثم ملف LIVE فيرا. 3 فشل متتالي = نوقف فيرا بس.
+            if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
+              if JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 PROBE_BRAND=vera \
+                 STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" REQ_CAP=40 STATIC_TTL=3600 \
+                 STORE_BACKFILL_FROM='2026-10-31 21:00:00' python juleb_rest_store.py; then VFAILS=0; else VFAILS=$((${VFAILS:-0} + 1)); echo "⚠️ سحب فيرا فشل (${VFAILS})"; fi
+              VERA_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" VERA_LIVE_OUT="$GITHUB_WORKSPACE/data/rest_store/vera_live_days.json" \
+                python vera_live_refresh.py || echo "⚠️ تحديث LIVE فيرا ما تمش"
+              FILES+=(data/rest_store/vera_live_days.json)
+            fi
             YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
             CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio.json')).get('end_date',''))" 2>/dev/null)
             # إعادة بناء تانية الصبح (8-10 الرياض): تكلفة بنود سيشنات الليل بتتحسب بعد قفلها فبنعيد البناء بعد ما المخزن يستكمل التكلفة
@@ -86,7 +96,7 @@ jobs:
             if [ $NEED -eq 1 ]; then
               echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء"
               if (cd doom_trial_report && python rest_cache_run.py); then
-                FILES+=(doom_trial_report/data_cache/*.json data/rest_store/pos_store.json)
+                FILES+=(doom_trial_report/data_cache/*.json data/rest_store/pos_store.json data/rest_store/vera_pos_store.json)
               else
                 echo "⚠️ إعادة بناء الكاشات ما اكتملتش"
               fi
