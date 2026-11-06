@@ -134,7 +134,7 @@ jobs:
             HH=$((10#$(TZ=Asia/Riyadh date +%H))); MARK=/tmp/morning_rebuild_$(TZ=Asia/Riyadh date +%F)
             NEED=0; [ "$CUR" != "$YEST" ] && NEED=1
             # إعادة بناء إجبارية مرة واحدة بعد إصلاح المدفوعات في بديل XML-RPC (علامة بتتحفظ مع الكاشات)
-            FIXMARK=doom_trial_report/data_cache/.rebuilt_after_pay_fix_20261107
+            FIXMARK=doom_trial_report/data_cache/.rebuilt_after_pay_fix_v2
             [ -f "$FIXMARK" ] || NEED=1
             if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
             if [ $NEED -eq 1 ]; then
@@ -142,13 +142,17 @@ jobs:
               # بنود المبيعات للشهر (صفحة النواقص) من المخزن - بتتحدث مع إعادة البناء بس عشان حجم الملف
               REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" POS_SALES_DIR="$GITHUB_WORKSPACE/data/pos_sales" python pos_sales_from_store.py \
                 && FILES+=(data/pos_sales/2026-11.json data/pos_sales/2026-12.json data/pos_sales/2027-01.json) || echo "⚠️ بنود المبيعات ما اتبنتش"
+              touch /tmp/rb_start; sleep 1
               if (cd doom_trial_report && python rest_cache_run.py); then
-                touch "$FIXMARK"
+                # العلامة بتتسجّل بس لو كاش الربح اتبنى فعلًا (rest_cache_run بيطلع 0 حتى لو تخطى الكاشات الثقيلة)
+                [ doom_trial_report/data_cache/profit_ratio.json -nt /tmp/rb_start ] && touch "$FIXMARK"
                 FILES+=(doom_trial_report/data_cache/*.json "$FIXMARK" data/rest_store/pos_store.json data/rest_store/vera_pos_store.json)
               else
                 echo "⚠️ إعادة بناء الكاشات ما اكتملتش"
               fi
             fi
+            # المخزن كل ساعة (كل رابع دورة) عشان أي إعادة تشغيل ما تضيّعش تقدم السحب
+            if [ $((CYCLE % 4)) -eq 1 ]; then FILES+=(data/rest_store/pos_store.json data/rest_store/vera_pos_store.json); fi
             push_files "${FILES[@]}" || echo "⚠️ push فشل"
             ELAPSED=$(( $(date +%s) - START ))
             [ $ELAPSED -ge $DURATION ] && break
