@@ -99,6 +99,9 @@ jobs:
             fi
             (cd doom_trial_report && python live_refresh.py) || echo "⚠️ تحديث LIVE ما تمش"
             FILES=(doom_trial_report/data_cache/live_days.json)
+            # صفوف فواتير المنصات (صفحة منصات التوصيل) من المخزن - صفر طلبات
+            REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
+              python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
             # فيرا: بالتتابع بعد السحب الأول (ممنوع سحب متوازي) - سحب خفيف (≤40 طلب) ثم ملف LIVE فيرا. 3 فشل متتالي = نوقف فيرا بس.
             if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
               if JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 PROBE_BRAND=vera \
