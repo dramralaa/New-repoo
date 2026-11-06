@@ -48,7 +48,9 @@ jobs:
           [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
           case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
           python juleb_rest_store.py
-          cd doom_trial_report && python rest_cache_run.py || echo "⚠️ بناء الكاش لم يكتمل (المخزن لسه بيتكمّل أو خطأ)"
+          # بدون `|| echo`: أي فشل في بناء الكاش يوقّع الخطوة (والـCommit بعدها always() فتقدّم السحب بيتحفظ)
+          cd doom_trial_report && python rest_cache_run.py
+          test -s data_cache/live_days.json || { echo "::error::live_days.json غير موجود/فاضي بعد البناء"; exit 1; }
       - name: Commit
         if: always()
         run: |
