@@ -33,6 +33,7 @@ jobs:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_KEY_VERA: ${{ secrets.JULEB_API_KEY_VERA }}
+          VERA_PUSH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
           PROBE_BRAND: doom
           REQ_CAP: '80'
@@ -63,6 +64,20 @@ jobs:
             return 1
           }
 
+          publish_vera() {
+            local VR=/tmp/vera-live URL="https://x-access-token:${VERA_PUSH_TOKEN}@github.com/dramralaa/vera-repo.git"
+            [ -n "$VERA_PUSH_TOKEN" ] && [ -f data/rest_store/vera_live_days.json ] || return 1
+            rm -rf $VR
+            if ! timeout 90 git clone -q --depth 1 --branch live-data "$URL" $VR 2>/dev/null; then
+              timeout 90 git clone -q --depth 1 "$URL" $VR || return 1
+              (cd $VR && git checkout -q --orphan live-data && git rm -rqf . >/dev/null 2>&1; true)
+            fi
+            mkdir -p $VR/data && cp data/rest_store/vera_live_days.json $VR/data/vera_live_days.json
+            (cd $VR && git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com" \
+              && git add data/vera_live_days.json && { git diff --cached --quiet && exit 0; } \
+              && git commit -q -m "LIVE data [skip ci]" && timeout 90 git push -q origin live-data)
+          }
+
           START=$(date +%s)
           DURATION=$((335 * 60))
           FAILS=0
@@ -86,6 +101,8 @@ jobs:
               VERA_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" VERA_LIVE_OUT="$GITHUB_WORKSPACE/data/rest_store/vera_live_days.json" \
                 python vera_live_refresh.py || echo "⚠️ تحديث LIVE فيرا ما تمش"
               FILES+=(data/rest_store/vera_live_days.json)
+              # نشر ملف LIVE فيرا على ريبو فيرا الخاص (فرع live-data) - الداشبورد بتقراه من هناك. فشل النشر مش بيوقف الحلقة.
+              publish_vera || echo "⚠️ نشر ملف فيرا فشل"
             fi
             YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
             CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio.json')).get('end_date',''))" 2>/dev/null)
