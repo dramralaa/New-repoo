@@ -98,7 +98,18 @@ jobs:
               break
             fi
             (cd doom_trial_report && python live_refresh.py) || echo "⚠️ تحديث LIVE ما تمش"
+            # لقطة الدفعات + تواريخ الانتهاء (مرة كل يوم، بالتتابع بعد السحب الأول - مش متوازي): دوم ثم فيرا
+            BMARK=/tmp/batch_expiry_$(TZ=Asia/Riyadh date +%F)
+            if [ ! -f "$BMARK" ]; then
+              touch "$BMARK"
+              JULEB_API_KEY="$JULEB_API_KEY" JULEB_API_BASE=https://medova.juleb.com/api/v1 BATCH_OUT="$GITHUB_WORKSPACE/data/rest_store/batch_expiry_doom.json" REQ_CAP=40 python juleb_batch_expiry.py || echo "⚠️ لقطة دفعات دوم فشلت"
+              if [ -n "$JULEB_API_KEY_VERA" ]; then
+                JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 BATCH_OUT="$GITHUB_WORKSPACE/data/rest_store/batch_expiry_vera.json" REQ_CAP=40 python juleb_batch_expiry.py || echo "⚠️ لقطة دفعات فيرا فشلت"
+              fi
+              BATCH_FILES=(data/rest_store/batch_expiry_doom.json data/rest_store/batch_expiry_vera.json)
+            fi
             FILES=(doom_trial_report/data_cache/live_days.json)
+            FILES+=("${BATCH_FILES[@]}"); BATCH_FILES=()
             # صفوف فواتير المنصات (صفحة منصات التوصيل) من المخزن - صفر طلبات
             REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
               python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
