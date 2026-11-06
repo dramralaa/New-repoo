@@ -90,6 +90,7 @@ jobs:
           CYCLE=0
           while true; do
             CYCLE=$((CYCLE + 1))
+            CYCLE_START=$(date +%s)
             echo "════════ دورة $CYCLE - $(date -u '+%H:%M:%S') UTC ════════"
             if python juleb_rest_store.py; then FAILS=0; else FAILS=$((FAILS + 1)); echo "⚠️ السحب فشل ($FAILS)"; fi
             if [ $FAILS -ge 3 ]; then
@@ -155,7 +156,19 @@ jobs:
             if [ $H -ge 7 ] || [ $H -lt 2 ]; then SLEEP=900; else SLEEP=1800; fi
             REM=$((DURATION - ELAPSED)); [ $SLEEP -gt $REM ] && SLEEP=$REM
             [ $FAILS -gt 0 ] && SLEEP=$((SLEEP + 900))
-            sleep $SLEEP
+            # تحديث عند الطلب: بنصحى كل دقيقة ونفحص طلب الصفحة (ملف live_request.json على الفرع المنشور)؛ لو فيه طلب أحدث من آخر دورة وعدّى 10 دقايق
+            # من بداية آخر دورة نعمل دورة فورًا. وإلا بنكمّل لحد SLEEP (احتياطي: 30 دقيقة نهارًا، ساعة ليلًا).
+            if [ $H -ge 7 ] || [ $H -lt 2 ]; then SLEEP=1800; else SLEEP=3600; fi
+            [ $SLEEP -gt $REM ] && SLEEP=$REM
+            [ $FAILS -gt 0 ] && SLEEP=$((SLEEP + 600))
+            WAITED=0
+            while [ $WAITED -lt $SLEEP ]; do
+              sleep 60; WAITED=$((WAITED + 60))
+              [ $(( $(date +%s) - CYCLE_START )) -ge 600 ] || continue   # حد أدنى 10 دقايق من بداية آخر دورة
+              timeout 60 git fetch -q origin $BR 2>/dev/null || continue
+              REQ=$(git show origin/$BR:doom_trial_report/data_cache/live_request.json 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
+              if [ "${REQ:-0}" -gt "$CYCLE_START" ]; then echo "🔔 طلب تحديث من الصفحة - دورة فورية"; break; fi
+            done
           done
           push_files data/rest_store/pos_store.json doom_trial_report/data_cache/live_days.json || true
       - name: Self-relaunch
