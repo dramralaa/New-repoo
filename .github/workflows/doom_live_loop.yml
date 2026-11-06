@@ -55,7 +55,7 @@ jobs:
             for i in 1 2 3 4; do
               timeout 60 git push origin HEAD:$BR && return 0
               timeout 60 git fetch origin $BR
-              git rebase -X theirs origin/$BR || git rebase --abort
+              git rebase -X theirs --autostash origin/$BR || git rebase --abort
               sleep $((i * 3))
             done
             return 1
