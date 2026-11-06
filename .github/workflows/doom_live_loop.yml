@@ -1,0 +1,107 @@
+# 🔄 6 نوفمبر 2026 - حلقة تحديث LIVE دوم كل 15 دقيقة (بإذن د. عمرو) بالـAPI الرسمي (قراءة فقط). نمط الحلقة ذاتية التجديد (جدولة GitHub مش موثوقة هنا).
+# كل دورة: سحب خفيف (قائمة الأوردرات + بنود/مدفوعات الجديد بس، سقف 80 طلب، القوائم الثابتة مرة/ساعة) ← live_days.json ← commit.
+# كاشات اليوم السابق (الربح/التارجت/الفئات/التوقع/الساعة) بتتبني مرة لما التاريخ يتغيّر بس. المخزن بيتحفظ مع إعادة البناء وفي آخر النافذة.
+# وقف تلقائي بعد 3 فشل متتالي (429/5xx/403) من غير إعادة تشغيل ذاتي. المفتاح من الأسرار فقط، واللوج مفيهوش قيم.
+name: 🔄 [DOOM] حلقة تحديث LIVE (كل 15 دقيقة)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '50 * * * *'
+
+concurrency:
+  group: doom-rest-cache
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Live loop
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          PROBE_BRAND: doom
+          REQ_CAP: '80'
+          STATIC_TTL: '3600'
+          STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
+          REST_STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BR=claude/assortment-webhook-discovery-a4mxc6
+          # آخر سكربتات main (مرة في أول النافذة)
+          timeout 60 git fetch origin main && git merge -q --no-edit origin/main || git merge --abort || true
+
+          push_files() {
+            local added=0
+            for f in "$@"; do [ -f "$f" ] && git add "$f" && added=1; done
+            git diff --cached --quiet && return 0
+            git commit -q -m "🔄 تحديث LIVE دوم [vercel skip]"
+            for i in 1 2 3 4; do
+              timeout 60 git push origin HEAD:$BR && return 0
+              timeout 60 git fetch origin $BR
+              git rebase -X theirs origin/$BR || git rebase --abort
+              sleep $((i * 3))
+            done
+            return 1
+          }
+
+          START=$(date +%s)
+          DURATION=$((335 * 60))
+          FAILS=0
+          CYCLE=0
+          while true; do
+            CYCLE=$((CYCLE + 1))
+            echo "════════ دورة $CYCLE - $(date -u '+%H:%M:%S') UTC ════════"
+            if python juleb_rest_store.py; then FAILS=0; else FAILS=$((FAILS + 1)); echo "⚠️ السحب فشل ($FAILS)"; fi
+            if [ $FAILS -ge 3 ]; then
+              echo "::error::3 فشل متتالي في السحب - وقف الحلقة بدون إعادة تشغيل ذاتي (راجع اللوج)"
+              touch /tmp/no_relaunch
+              break
+            fi
+            (cd doom_trial_report && python live_refresh.py) || echo "⚠️ تحديث LIVE ما تمش"
+            FILES=(doom_trial_report/data_cache/live_days.json)
+            YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
+            CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio.json')).get('end_date',''))" 2>/dev/null)
+            if [ "$CUR" != "$YEST" ]; then
+              echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء مرة واحدة"
+              if (cd doom_trial_report && python rest_cache_run.py); then
+                FILES+=(doom_trial_report/data_cache/*.json data/rest_store/pos_store.json)
+              else
+                echo "⚠️ إعادة بناء الكاشات ما اكتملتش"
+              fi
+            fi
+            push_files "${FILES[@]}" || echo "⚠️ push فشل"
+            ELAPSED=$(( $(date +%s) - START ))
+            [ $ELAPSED -ge $DURATION ] && break
+            H=$((10#$(TZ=Asia/Riyadh date +%H)))
+            if [ $H -ge 7 ] || [ $H -lt 2 ]; then SLEEP=900; else SLEEP=1800; fi
+            REM=$((DURATION - ELAPSED)); [ $SLEEP -gt $REM ] && SLEEP=$REM
+            [ $FAILS -gt 0 ] && SLEEP=$((SLEEP + 900))
+            sleep $SLEEP
+          done
+          push_files data/rest_store/pos_store.json doom_trial_report/data_cache/live_days.json || true
+      - name: Self-relaunch
+        if: always()
+        run: |
+          [ -f /tmp/no_relaunch ] && { echo "لا إعادة تشغيل (وقف بسبب فشل متكرر)"; exit 0; }
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_live_loop.yml/dispatches" \
+            -d '{"ref":"main"}'
