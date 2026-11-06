@@ -111,8 +111,11 @@ jobs:
             FILES=(doom_trial_report/data_cache/live_days.json)
             FILES+=("${BATCH_FILES[@]}"); BATCH_FILES=()
             # صفوف فواتير المنصات (صفحة منصات التوصيل) من المخزن - صفر طلبات
-            REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
-              python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
+            # كل ساعة (كل رابع دورة) مش كل دورة - الملف كبير نسبيًا
+            if [ $((CYCLE % 4)) -eq 1 ]; then
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
+                python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
+            fi
             # فيرا: بالتتابع بعد السحب الأول (ممنوع سحب متوازي) - سحب خفيف (≤40 طلب) ثم ملف LIVE فيرا. 3 فشل متتالي = نوقف فيرا بس.
             if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
               if JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 PROBE_BRAND=vera \
@@ -132,6 +135,9 @@ jobs:
             if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
             if [ $NEED -eq 1 ]; then
               echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء"
+              # بنود المبيعات للشهر (صفحة النواقص) من المخزن - بتتحدث مع إعادة البناء بس عشان حجم الملف
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" POS_SALES_DIR="$GITHUB_WORKSPACE/data/pos_sales" python pos_sales_from_store.py \
+                && FILES+=(data/pos_sales/2026-11.json data/pos_sales/2026-12.json data/pos_sales/2027-01.json) || echo "⚠️ بنود المبيعات ما اتبنتش"
               if (cd doom_trial_report && python rest_cache_run.py); then
                 FILES+=(doom_trial_report/data_cache/*.json data/rest_store/pos_store.json data/rest_store/vera_pos_store.json)
               else
