@@ -172,6 +172,10 @@ jobs:
               timeout 60 git fetch -q origin $BR 2>/dev/null || continue
               REQ=$(git show origin/$BR:doom_trial_report/data_cache/live_request.json 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
               if [ "${REQ:-0}" -gt "$CYCLE_START" ]; then echo "🔔 طلب تحديث من الصفحة - دورة فورية"; break; fi
+              if [ -n "$VERA_PUSH_TOKEN" ]; then
+                VREQ=$(curl -sS --max-time 20 -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/dramralaa/vera-repo/contents/data/vera_live_request.json?ref=live-data" 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
+                if [ "${VREQ:-0}" -gt "$CYCLE_START" ]; then echo "🔔 طلب تحديث من صفحة فيرا - دورة فورية"; break; fi
+              fi
             done
           done
           push_files data/rest_store/pos_store.json doom_trial_report/data_cache/live_days.json || true
