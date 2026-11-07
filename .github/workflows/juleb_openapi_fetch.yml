@@ -1,4 +1,4 @@
-name: 🔎 Juleb OpenAPI (read-only, one request)
+name: 🔎 Juleb docs fetch (read-only)
 on:
   workflow_dispatch:
 concurrency:
@@ -8,21 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Fetch openapi.json and list paths
-        env:
-          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+      - name: Fetch public docs pages
         run: |
-          [ -n "$JULEB_API_KEY" ] || { echo "no key"; exit 1; }
-          code=$(curl -sS -m 60 -H "Authorization: Bearer $JULEB_API_KEY" -o /tmp/o.json -w '%{http_code}' https://medova.juleb.com/api/v1/openapi.json || echo 000)
-          echo "HTTP $code size $(wc -c </tmp/o.json)"
-          python3 - <<'PY'
-          import json
-          try:
-              j = json.load(open('/tmp/o.json'))
-          except Exception as e:
-              print('not json', e, open('/tmp/o.json').read()[:300]); raise SystemExit(0)
-          ps = j.get('paths', {})
-          print('PATHS', len(ps))
-          for p in sorted(ps):
-              print(p, ','.join(k.upper() for k in ps[p]))
+          for u in https://docs.juleb.com/getting-started https://docs.juleb.com/ ; do
+            echo "=== $u"
+            curl -sSL -m 60 -A 'Mozilla/5.0' -o /tmp/p.html -w 'HTTP %{http_code} %{size_download}\n' "$u" || true
+            python3 - <<'PY'
+          import re, html
+          s = open('/tmp/p.html', errors='ignore').read()
+          links = sorted(set(re.findall(r'href="([^"#]+)"', s)))
+          print('LINKS', [l for l in links if 'juleb' in l or l.startswith('/')][:80])
+          t = re.sub(r'<(script|style)[^>]*>.*?</\1>', ' ', s, flags=re.S)
+          t = html.unescape(re.sub(r'<[^>]+>', ' ', t))
+          t = re.sub(r'\s+', ' ', t)
+          print('TEXT', t[:5000])
           PY
+          done
