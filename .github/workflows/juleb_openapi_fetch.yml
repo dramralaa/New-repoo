@@ -1,4 +1,4 @@
-name: 🔎 Juleb stock probe (read-only, few requests)
+name: 🔎 Juleb stock probe 2 (read-only, few requests)
 on:
   workflow_dispatch:
 concurrency:
@@ -42,8 +42,8 @@ jobs:
               print(raw[:400])
           PY
           }
-          call "/inventory/product?fields=id,name,qty_available&limit=3"
-          call "/inventory/product?filter=qty_available%3C10&fields=id,name,qty_available&limit=3"
-          call "/inventory/stock?limit=2"
-          call "/inventory/stock/quant?limit=2"
-          call "/inventory/product?limit=1"
+          call "/inventory/product-template?fields=id,name,qty_available&limit=2"
+          call "/inventory/product-template?fields=id,name,virtual_available&limit=2"
+          call "/inventory/product-template?limit=1"
+          call "/inventory/picking?limit=1"
+          call "/inventory/batch?limit=1"
