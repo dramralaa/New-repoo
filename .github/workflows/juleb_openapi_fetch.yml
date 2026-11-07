@@ -1,4 +1,4 @@
-name: 🔎 Juleb stock probe 2 (read-only, few requests)
+name: 🔎 Juleb isolated qty_available request (read-only, one GET)
 on:
   workflow_dispatch:
 concurrency:
@@ -6,44 +6,14 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Docs endpoints + documented stock query
+      - name: GET /inventory/product?fields=id,qty_available&limit=1
         env:
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
         run: |
           [ -n "$JULEB_API_KEY" ] || { echo "no key"; exit 1; }
-          B=https://medova.juleb.com/api/v1
-          echo "=== docs/api-endpoints"
-          curl -sSL -m 60 -A 'Mozilla/5.0' -o /tmp/e.html -w 'HTTP %{http_code} %{size_download}\n' https://docs.juleb.com/api-endpoints || true
-          python3 - <<'PY'
-          import re, html
-          s = open('/tmp/e.html', errors='ignore').read()
-          print('LINKS', sorted(set(re.findall(r'href="([^"#]+)"', s)))[:120])
-          t = re.sub(r'<(script|style)[^>]*>.*?</\1>', ' ', s, flags=re.S)
-          t = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', t)))
-          print('TEXT', t[:3500])
-          PY
-          call() {
-            sleep 3
-            echo "=== GET $1"
-            curl -sS -m 60 -H "Authorization: Bearer $JULEB_API_KEY" -o /tmp/r.json -w 'HTTP %{http_code}\n' "$B$1" || true
-            python3 - <<'PY'
-          import json
-          raw = open('/tmp/r.json', errors='ignore').read()
-          try:
-              j = json.loads(raw)
-              d = j.get('data')
-              if isinstance(d, list):
-                  print('rows', len(d), 'keys', sorted(d[0].keys()) if d else [], 'first', json.dumps(d[0], ensure_ascii=False)[:300] if d else '')
-              else:
-                  print(raw[:400])
-          except Exception:
-              print(raw[:400])
-          PY
-          }
-          call "/inventory/product-template?fields=id,name,qty_available&limit=2"
-          call "/inventory/product-template?fields=id,name,virtual_available&limit=2"
-          call "/inventory/product-template?limit=1"
-          call "/inventory/picking?limit=1"
-          call "/inventory/batch?limit=1"
+          echo "::add-mask::$JULEB_API_KEY"
+          code=$(curl -sS -m 60 -H "Authorization: Bearer $JULEB_API_KEY" -o /tmp/r.json -w '%{http_code}' "https://medova.juleb.com/api/v1/inventory/product?fields=id,qty_available&limit=1" || echo 000)
+          echo "HTTP $code"
+          head -c 400 /tmp/r.json; echo
