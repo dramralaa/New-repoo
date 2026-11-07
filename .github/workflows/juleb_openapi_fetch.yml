@@ -1,0 +1,28 @@
+name: 🔎 Juleb OpenAPI (read-only, one request)
+on:
+  workflow_dispatch:
+concurrency:
+  group: juleb-openapi
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch openapi.json and list paths
+        env:
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "no key"; exit 1; }
+          code=$(curl -sS -m 60 -H "Authorization: Bearer $JULEB_API_KEY" -o /tmp/o.json -w '%{http_code}' https://medova.juleb.com/api/v1/openapi.json || echo 000)
+          echo "HTTP $code size $(wc -c </tmp/o.json)"
+          python3 - <<'PY'
+          import json
+          try:
+              j = json.load(open('/tmp/o.json'))
+          except Exception as e:
+              print('not json', e, open('/tmp/o.json').read()[:300]); raise SystemExit(0)
+          ps = j.get('paths', {})
+          print('PATHS', len(ps))
+          for p in sorted(ps):
+              print(p, ','.join(k.upper() for k in ps[p]))
+          PY
