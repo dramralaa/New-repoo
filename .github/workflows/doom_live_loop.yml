@@ -106,6 +106,10 @@ jobs:
           }
 
           stock_followup  # تسجيل الوضع الحالي كنقطة بداية
+          # مراقب مستقل كل 60 ثانية: بيشتغل حتى لو الدورة الأساسية في إعادة بناء ثقيلة (الفحص جوه الدورة كان بيتأخر)
+          ( while true; do sleep 60; stock_followup; done ) &
+          STOCK_WATCH_PID=$!
+          trap 'kill $STOCK_WATCH_PID 2>/dev/null || true' EXIT
           START=$(date +%s)
           DURATION=$((335 * 60))
           FAILS=0
