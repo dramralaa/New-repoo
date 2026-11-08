@@ -84,6 +84,28 @@ jobs:
             )
           }
 
+          # 🔗 متابعة ملف الرصيد الجديد: لما ملف رصيد جديد يتقبل ويتنشر على main (stock_balance.json بيتغيّر generated_at)،
+          # نشغّل دورة المنصات مرة واحدة (حد أدنى 20 دقيقة بين تشغيلين) - من غير ما حد يدوس. أول استدعاء بيسجّل الوضع الحالي بس.
+          # مفيش أي طلب لجوليب أو المنصات هنا: fetch من GitHub فقط + طلب تشغيل لـplatform_cycle (نفس الدورة الموجودة).
+          stock_followup() {
+            timeout 30 git fetch -q origin main 2>/dev/null || return 0
+            local GEN
+            GEN=$(git show origin/main:data/stock_balance.json 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('generated_at',''))" 2>/dev/null) || GEN=""
+            [ -n "$GEN" ] || return 0
+            if [ -z "$LAST_STOCK_GEN" ]; then LAST_STOCK_GEN="$GEN"; return 0; fi
+            [ "$GEN" != "$LAST_STOCK_GEN" ] || return 0
+            local NOWTS; NOWTS=$(date +%s)
+            # لو لسه جوه الـ20 دقيقة: ما نسجّلش الملف كمتعالج، فيتنفّذ أول ما المهلة تخلص
+            [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge 1200 ] || return 0
+            LAST_STOCK_GEN="$GEN"
+            LAST_STOCK_DISPATCH=$NOWTS
+            local CODE
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/platform_cycle.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
+            echo "🔗 ملف رصيد جديد ($GEN) ← تشغيل دورة المنصات: HTTP $CODE"
+          }
+
+          stock_followup  # تسجيل الوضع الحالي كنقطة بداية
           START=$(date +%s)
           DURATION=$((335 * 60))
           FAILS=0
@@ -168,6 +190,7 @@ jobs:
             WAITED=0
             while [ $WAITED -lt $SLEEP ]; do
               sleep 60; WAITED=$((WAITED + 60))
+              stock_followup
               [ $(( $(date +%s) - CYCLE_START )) -ge 600 ] || continue   # حد أدنى 10 دقايق من بداية آخر دورة
               timeout 60 git fetch -q origin $BR 2>/dev/null || continue
               REQ=$(git show origin/$BR:doom_trial_report/data_cache/live_request.json 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
