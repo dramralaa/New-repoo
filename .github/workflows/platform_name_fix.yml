@@ -1,0 +1,27 @@
+name: 🩹 تصحيح اسم صنف على المنصات (يدوي - مرة)
+on:
+  workflow_dispatch:
+concurrency:
+  group: platform-name-fix
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Fix SKU name (no names/secrets printed)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
+          HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+        run: python platform_name_fix.py
