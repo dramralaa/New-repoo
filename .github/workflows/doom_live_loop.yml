@@ -134,7 +134,7 @@ jobs:
             HH=$((10#$(TZ=Asia/Riyadh date +%H))); MARK=/tmp/morning_rebuild_$(TZ=Asia/Riyadh date +%F)
             NEED=0; [ "$CUR" != "$YEST" ] && NEED=1
             # إعادة بناء إجبارية مرة واحدة بعد إصلاح المدفوعات في بديل XML-RPC (علامة بتتحفظ مع الكاشات)
-            FIXMARK=doom_trial_report/data_cache/.rebuilt_daily_sales_v3
+            FIXMARK=doom_trial_report/data_cache/.rebuilt_list_override_v4
             [ -f "$FIXMARK" ] || NEED=1
             if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
             if [ $NEED -eq 1 ]; then
