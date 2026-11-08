@@ -1,0 +1,33 @@
+# 9 نوفمبر 2026 - اختبار قراءة واحد (GetReportRequests) على بوابة تقارير جوليب بمفتاح التكامل (دوم فقط). يدوي، طلب واحد، بدون retry، بدون كوكيز، بدون إنشاء تقرير.
+name: 🔎 [JULEB] اختبار قراءة بوابة التقارير (يدوي - طلب واحد)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-reporting-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: One read-only request (no retry)
+        env:
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          REPORTING_PROBE_APPROVED: "1"
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          echo "::add-mask::$JULEB_API_KEY"
+          python juleb_reporting_probe.py
