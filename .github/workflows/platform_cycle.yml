@@ -29,7 +29,7 @@ jobs:
       - name: دورة المنصات
         env:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
-          PLATFORM_WITH_JAHEZ: ${{ (github.event_name == 'workflow_dispatch' || github.event.schedule == '0 4,11,15,19 * * *') && '1' || '0' }}
+          PLATFORM_WITH_JAHEZ: '1'  # 10 نوفمبر 2026 (قرار صاحب المشروع): جاهز 8 مرات يوميًا زي هنجرستيشن (كان 4)
           STOCK_MAX_AGE_MIN: '120'
           SNAPSHOT_LIVE_FALLBACK: '0'
           JULEB_URL: ${{ secrets.JULEB_URL }}
