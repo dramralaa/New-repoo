@@ -1,0 +1,48 @@
+# 🔎 9 نوفمبر 2026 - مقارنة توثيق Juleb API المحدّث لدوم وفيرا (قراءة فقط، <=14 GET). بيكتب data/openapi_diff.json + نسخة التوثيق في juleb-daily-report.
+name: 🔎 مقارنة توثيق Juleb API
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-openapi
+  cancel-in-progress: false
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Diff
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          KEY_DOOM: ${{ secrets.JULEB_API_KEY_DOOM }}
+          KEY_VERA: ${{ secrets.JULEB_API_KEY_VERA }}
+        run: python juleb_openapi_diff.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/openapi_diff.json ] || exit 0
+          mkdir -p /tmp/out && cp data/openapi_diff.json /tmp/out/ && cp data/juleb_api/*_openapi_20261109.json /tmp/out/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/openapi_diff.json data/; mkdir -p data/juleb_api; cp /tmp/out/*_openapi_20261109.json data/juleb_api/ 2>/dev/null || true
+            git add data/openapi_diff.json data/juleb_api 2>/dev/null
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔎 مقارنة توثيق Juleb API [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
