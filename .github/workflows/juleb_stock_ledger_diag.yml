@@ -1,0 +1,56 @@
+# 🔎 10 نوفمبر 2026 - تشخيص دفتر الرصيد: بيستعيد نسخة من كاش الحالة (restore فقط - مابيحفظش فوقه) ويطلّع مساهمات كل حركة.
+# صفر طلبات لجوليب، صفر كتابة على المنصات. اللوج أعداد بس (الريبو ده عام)؛ الملف بيتحفظ في الريبو الخاص.
+name: 🔎 [DOOM] تشخيص دفتر الرصيد (من الكاش)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-stock-ledger-shadow
+  cancel-in-progress: false
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Restore ledger state (read-only)
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ledger_state.json
+          key: ledger-state-diag-never-matches
+          restore-keys: |
+            ledger-state-
+      - name: Diagnose
+        env:
+          STATE_PATH: /tmp/ledger_state_copy.json
+          CACHE_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+        run: |
+          [ -f .ledger_state.json ] || { echo "⛔ الكاش غير متاح"; exit 1; }
+          cp .ledger_state.json /tmp/ledger_state_copy.json
+          python stock_ledger_diag.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          cp data/stock_ledger_contrib.json /tmp/contrib.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/contrib.json data/stock_ledger_contrib.json
+            git add data/stock_ledger_contrib.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔎 تشخيص دفتر الرصيد [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
