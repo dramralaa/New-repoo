@@ -31,6 +31,9 @@ jobs:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           PLATFORM_WITH_JAHEZ: '1'  # 10 نوفمبر 2026 (قرار صاحب المشروع): جاهز 8 مرات يوميًا زي هنجرستيشن (كان 4)
           STOCK_MAX_AGE_MIN: '120'
+          # 10 نوفمبر 2026 (قرار د. عمرو): دوم 1 من الدفتر مباشرة (رفع وخفض). الرجوع للقديم: امسح السطر التالي.
+          DOOM_FULL_LEDGER_BRANCHES: 'DOOM 1'
+          LEDGER_MAX_AGE_MIN: '200'
           SNAPSHOT_LIVE_FALLBACK: '0'
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
