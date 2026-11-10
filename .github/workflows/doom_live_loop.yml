@@ -142,6 +142,9 @@ jobs:
             if [ $((CYCLE % 4)) -eq 1 ]; then
               REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
                 python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
+              # 10 نوفمبر 2026: بنود المبيعات الشهرية (صفحة النواقص) كانت بتتحدّث مرة بس يوميًا مع إعادة بناء الكاشات (فاتت 3 أيام 7-9 نوفمبر) - دلوقتي مع كل دورة رابعة (صفر طلبات، من المخزن)
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" POS_SALES_DIR="$GITHUB_WORKSPACE/data/pos_sales" python pos_sales_from_store.py \
+                && FILES+=(data/pos_sales/2026-11.json data/pos_sales/2026-12.json data/pos_sales/2027-01.json) || echo "⚠️ بنود المبيعات ما اتحدّثتش"
             fi
             # فيرا: بالتتابع بعد السحب الأول (ممنوع سحب متوازي) - سحب خفيف (≤40 طلب) ثم ملف LIVE فيرا. 3 فشل متتالي = نوقف فيرا بس.
             if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
