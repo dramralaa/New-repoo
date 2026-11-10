@@ -84,6 +84,22 @@ jobs:
             )
           }
 
+          # 🟣 10 نوفمبر 2026: نشر مخزن فواتير فيرا + حزمة الأصناف/الأرصدة على فرع live-store (commit يتيم + force: بدون تضخّم تاريخ الريبو).
+          # الداشبورد (صفحات كريم) بتقراهم بدل XML-RPC المحجوب من جوليب. فشل النشر مش بيوقف الحلقة.
+          publish_vera_store() {
+            local VR=/tmp/vera-store URL="https://x-access-token:${VERA_PUSH_TOKEN}@github.com/dramralaa/vera-repo.git"
+            [ -n "$VERA_PUSH_TOKEN" ] && [ -f data/rest_store/vera_pos_store.json ] && [ -f data/rest_store/vera_dash_pack.json ] || return 1
+            rm -rf $VR && mkdir -p $VR/data && cp data/rest_store/vera_pos_store.json $VR/data/vera_pos_store.json && cp data/rest_store/vera_dash_pack.json $VR/data/vera_dash_pack.json
+            (
+              cd $VR || exit 1
+              git init -q -b live-store
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add data && git commit -q -m "store [skip ci]" || exit 1
+              timeout 120 git push -q --force "$URL" live-store
+            )
+          }
+
           # 🔗 متابعة ملف الرصيد الجديد: لما ملف رصيد جديد يتقبل ويتنشر على main (stock_balance.json بيتغيّر generated_at)،
           # نشغّل دورة المنصات مرة واحدة (حد أدنى 20 دقيقة بين تشغيلين) - من غير ما حد يدوس. أول استدعاء بيسجّل الوضع الحالي بس.
           # مفيش أي طلب لجوليب أو المنصات هنا: fetch من GitHub فقط + طلب تشغيل لـplatform_cycle (نفس الدورة الموجودة).
@@ -156,6 +172,10 @@ jobs:
               FILES+=(data/rest_store/vera_live_days.json)
               # نشر ملف LIVE فيرا على ريبو فيرا الخاص (فرع live-data) - الداشبورد بتقراه من هناك. فشل النشر مش بيوقف الحلقة.
               publish_vera || echo "⚠️ نشر ملف فيرا فشل"
+              # حزمة أصناف/أرصدة فيرا (من ملفات الريبو، صفر طلبات) + نشر المخزن: كل رابع دورة (~36 دقيقة)
+              if [ $((CYCLE % 4)) -eq 1 ]; then
+                python vera_dash_pack.py && publish_vera_store || echo "⚠️ نشر مخزن فيرا فشل"
+              fi
             fi
             YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
             CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio_cur.json')).get('end_date',''))" 2>/dev/null)
