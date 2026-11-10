@@ -158,7 +158,7 @@ jobs:
               publish_vera || echo "⚠️ نشر ملف فيرا فشل"
             fi
             YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
-            CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio.json')).get('end_date',''))" 2>/dev/null)
+            CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio_cur.json')).get('end_date',''))" 2>/dev/null)
             # إعادة بناء تانية الصبح (8-10 الرياض): تكلفة بنود سيشنات الليل بتتحسب بعد قفلها فبنعيد البناء بعد ما المخزن يستكمل التكلفة
             HH=$((10#$(TZ=Asia/Riyadh date +%H))); MARK=/tmp/morning_rebuild_$(TZ=Asia/Riyadh date +%F)
             NEED=0; [ "$CUR" != "$YEST" ] && NEED=1
@@ -166,6 +166,8 @@ jobs:
             FIXMARK=doom_trial_report/data_cache/.rebuilt_list_override_v4
             [ -f "$FIXMARK" ] || NEED=1
             if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
+            # 10 نوفمبر 2026 (قرار د. عمرو): كاش تراكمي أكتر من مرة في اليوم - كل 8 دورات (~72 دقيقة) من 7 ص لـ11 م بنعيد بناء الشهر الحالي بس (الأرشيف ثابت، من المخزن المحلي: صفر طلبات)
+            if [ $NEED -eq 0 ] && [ $((CYCLE % 8)) -eq 3 ] && [ $HH -ge 7 ] && [ $HH -lt 23 ]; then NEED=1; fi
             if [ $NEED -eq 1 ]; then
               echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء"
               # بنود المبيعات للشهر (صفحة النواقص) من المخزن - بتتحدث مع إعادة البناء بس عشان حجم الملف
@@ -174,7 +176,7 @@ jobs:
               touch /tmp/rb_start; sleep 1
               if (cd doom_trial_report && python rest_cache_run.py); then
                 # العلامة بتتسجّل بس لو كاش الربح اتبنى فعلًا (rest_cache_run بيطلع 0 حتى لو تخطى الكاشات الثقيلة)
-                [ doom_trial_report/data_cache/profit_ratio.json -nt /tmp/rb_start ] && touch "$FIXMARK"
+                [ doom_trial_report/data_cache/profit_ratio_cur.json -nt /tmp/rb_start ] && touch "$FIXMARK"
                 FILES+=(doom_trial_report/data_cache/*.json "$FIXMARK" data/rest_store/pos_store.json data/rest_store/vera_pos_store.json)
               else
                 echo "⚠️ إعادة بناء الكاشات ما اكتملتش"
