@@ -1,0 +1,56 @@
+# 🔎 11 نوفمبر 2026 - اختبار مصادقة واحد (طلب واحد فقط، POST قراءة): هل يقبل مسار الواجهة /web/dataset/search_read مفتاح Bearer بتاع الـAPI؟
+# مفيش كوكي ولا حساب مستخدم. نموذج ثابت branch.stock.page وlimit 5. أي حالة غير 200 = توقف بلا إعادة. اللوج: HTTP status ومفاتيح JSON ورمز/اسم الاستثناء (منقّحين) وأرقام فقط - بلا رسائل خادم ولا مسارات ولا أسماء ولا هيدرز.
+name: 🔎 اختبار مصادقة /web (طلب واحد)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-openapi
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: One read-only POST
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          KEY_DOOM: ${{ secrets.JULEB_API_KEY_DOOM }}
+        run: |
+          python - <<'PY'
+          import json, os
+          import re
+          import requests
+          if any(x in os.environ.get("PLATFORM_PAUSE", "").lower().replace(";", ",").split(",") for x in ("juleb", "all")):
+              raise SystemExit("⛔ زرار الإيقاف مفعّل")
+          URL = "https://medova.juleb.com/web/dataset/search_read"   # طلب واحد فقط، مسار ثابت
+          body = {"jsonrpc": "2.0", "method": "call", "id": 1, "params": {
+              "model": "branch.stock.page", "domain": [], "fields": ["id", "product_id", "branch", "quantity", "status"],
+              "limit": 5, "offset": 0, "sort": "", "context": {"allowed_company_ids": [1, 8, 9, 10]}}}
+          r = requests.post(URL, json=body, headers={"Authorization": "Bearer " + os.environ["KEY_DOOM"], "Accept": "application/json"},
+                            timeout=60, allow_redirects=False)
+          print("STATUS", r.status_code)
+          print("CONTENT_TYPE", (r.headers.get("Content-Type") or "")[:60])
+          try:
+              j = r.json()
+          except Exception:
+              print("BODY_NOT_JSON len", len(r.text)); raise SystemExit(0)
+          print("JSON_KEYS", sorted(j.keys()) if isinstance(j, dict) else type(j).__name__)
+          if isinstance(j, dict) and j.get("error"):
+              e = j["error"]; d = e.get("data") or {}
+              _san = lambda v: re.sub(r"[^A-Za-z0-9_.]", "", str(v))[:60]   # رمز واسم استثناء فقط، بلا رسالة الخادم
+              print("ERROR code", _san(e.get("code")), "| exception", _san(d.get("name")))
+          res = j.get("result") if isinstance(j, dict) else None
+          if isinstance(res, dict):
+              recs = res.get("records") or []
+              print("LENGTH", res.get("length"), "| RECORDS", len(recs))
+              for x in recs:
+                  b = x.get("branch")
+                  print("ROW id", x.get("id"), "| branch_id", b[0] if isinstance(b, list) and b else b, "| qty", x.get("quantity"), "| status", x.get("status"))
+          PY
