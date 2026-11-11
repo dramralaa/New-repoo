@@ -1,0 +1,58 @@
+name: 🔎 Juleb read-only checks (product detail + one inventory adjustment)
+on:
+  workflow_dispatch:
+concurrency:
+  group: juleb-openapi
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Three GET requests (read-only)
+        env:
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "no key"; exit 1; }
+          echo "::add-mask::$JULEB_API_KEY"
+          B=https://medova.juleb.com/api/v1
+          get() {
+            sleep 3
+            echo "=== GET $1"
+            code=$(curl -sS -m 60 -H "Authorization: Bearer $JULEB_API_KEY" -o /tmp/r.json -w '%{http_code}' "$B$1" || echo 000)
+            echo "HTTP $code at $(date -u +%H:%M:%S) UTC"
+          }
+          show() {
+            python3 - "$1" <<'PY'
+          import json, re, sys
+          raw = open('/tmp/r.json', errors='ignore').read()
+          try:
+              j = json.loads(raw)
+          except Exception:
+              print(raw[:300]); raise SystemExit
+          d = j.get('data', j)
+          rows = d if isinstance(d, list) else [d]
+          print('rows', len(rows), 'meta', json.dumps(j.get('meta'), ensure_ascii=False)[:120] if isinstance(j, dict) else '')
+          if rows and isinstance(rows[0], dict):
+              keys = sorted(rows[0].keys())
+              print('n_keys', len(keys))
+              print('qty/stock-like keys:', [k for k in keys if re.search(r'qty|quant|stock|avail', k, re.I)])
+              mode = sys.argv[1]
+              if mode == 'product':
+                  print({k: rows[0].get(k) for k in ('id', 'default_code', 'product_tmpl_id', 'active', 'barcode', 'seeding_qty') if k in rows[0]})
+              elif mode == 'adj':
+                  print({k: rows[0].get(k) for k in keys if k in ('id', 'name', 'state', 'date', 'company_id', 'location_id', 'create_date', 'write_date', 'filter', 'product_id', 'inventory_date')})
+              else:
+                  for r in rows[:3]:
+                      print({k: r.get(k) for k in keys if re.search(r'^id$|product|qty|location|company|theoretical|state', k)})
+          PY
+          }
+          get "/inventory/product/3517"; show product
+          get "/inventory/inventory-adjustments?limit=1"; show adj
+          ID=$(python3 -c "
+          import json
+          try:
+              j=json.load(open('/tmp/r.json')); d=j.get('data'); d=d if isinstance(d,list) else [d]
+              print(d[0]['id'] if d and d[0] else '')
+          except Exception: print('')
+          ")
+          if [ -n "$ID" ]; then get "/inventory/inventory-adjustments/$ID/lines?limit=3"; show lines; else echo "no adjustment id - skip lines"; fi

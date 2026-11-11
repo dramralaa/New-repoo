@@ -1,0 +1,59 @@
+# 🔬 9 نوفمبر 2026 - فحص تشخيصي يدوي (قراءة فقط) لأصناف فروقها كبيرة في دفتر الرصيد. بيكتب data/ledger_diag.json في juleb-daily-report. ~بضع عشرات الطلبات، سقف 260، 429 = وقف.
+name: 🔬 [DOOM] تشخيص فروق الدفتر
+
+on:
+  workflow_dispatch:
+    inputs:
+      codes:
+        description: 'أكواد الأصناف (مفصولة بفاصلة)'
+        default: '104619,101427,0000007360,104548,101135'
+      since:
+        description: 'من تاريخ (UTC)'
+        default: '2026-10-20T00:00:00'
+
+concurrency:
+  group: juleb-stock-ledger-shadow
+  cancel-in-progress: false
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Diag
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          DIAG_CODES: ${{ inputs.codes }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          python juleb_ledger_diag.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/ledger_diag.json ] || exit 0
+          cp data/ledger_diag.json /tmp/ledger_diag.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/ledger_diag.json data/
+            git add data/ledger_diag.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔬 تشخيص دفتر الرصيد [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

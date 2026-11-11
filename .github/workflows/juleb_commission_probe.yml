@@ -1,0 +1,48 @@
+# 🔎 9 نوفمبر 2026 - فحص قراءة فقط لعمولة سطور نفلة/روان بعد إصلاح دعم جوليب. سقف 40 GET. بيكتب data/commission_probe.json في juleb-daily-report.
+name: 🔎 فحص عمولة سطور الصيادلة
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-openapi
+  cancel-in-progress: false
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Diff
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+        run: python juleb_commission_probe.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/commission_probe.json ] || exit 0
+          mkdir -p /tmp/out && cp data/commission_probe.json /tmp/out/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/commission_probe.json data/
+            git add data/commission_probe.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔎 فحص عمولة سطور الصيادلة [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1

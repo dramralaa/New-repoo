@@ -1,0 +1,242 @@
+# 🔄 6 نوفمبر 2026 - حلقة تحديث LIVE دوم كل 9 دقايق (من 10 نوفمبر) (بإذن د. عمرو) بالـAPI الرسمي (قراءة فقط). نمط الحلقة ذاتية التجديد (جدولة GitHub مش موثوقة هنا).
+# كل دورة: سحب خفيف (قائمة الأوردرات + بنود/مدفوعات الجديد بس، سقف 80 طلب، القوائم الثابتة مرة/ساعة) ← live_days.json ← commit.
+# كاشات اليوم السابق (الربح/التارجت/الفئات/التوقع/الساعة) بتتبني مرة لما التاريخ يتغيّر بس. المخزن بيتحفظ مع إعادة البناء وفي آخر النافذة.
+# وقف تلقائي بعد 3 فشل متتالي (429/5xx/403) من غير إعادة تشغيل ذاتي. المفتاح من الأسرار فقط، واللوج مفيهوش قيم.
+name: 🔄 [DOOM] حلقة تحديث LIVE (كل 9 دقايق)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '50 * * * *'
+
+concurrency:
+  group: doom-rest-cache
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Live loop
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_KEY_VERA: ${{ secrets.JULEB_API_KEY_VERA }}
+          VERA_PUSH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          PROBE_BRAND: doom
+          REQ_CAP: '80'
+          STATIC_TTL: '3600'
+          STORE_BACKFILL_FROM: '2026-10-31 21:00:00'   # مرة واحدة: أول 3 ساعات من 1 نوفمبر بتوقيت الرياض (علامة backfill_done)
+          STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
+          REST_STORE_PATH: ${{ github.workspace }}/data/rest_store/pos_store.json
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BR=claude/assortment-webhook-discovery-a4mxc6
+          # آخر سكربتات main (مرة في أول النافذة)
+          timeout 60 git fetch origin main && git merge -q --no-edit origin/main || git merge --abort || true
+
+          push_files() {
+            local added=0
+            for f in "$@"; do [ -f "$f" ] && git add "$f" && added=1; done
+            git diff --cached --quiet && return 0
+            git commit -q -m "🔄 تحديث LIVE دوم [vercel skip]"
+            for i in 1 2 3 4; do
+              timeout 60 git push origin HEAD:$BR && return 0
+              timeout 60 git fetch origin $BR
+              git rebase -X theirs --autostash origin/$BR || git rebase --abort
+              sleep $((i * 3))
+            done
+            return 1
+          }
+
+          publish_vera() {
+            local VR=/tmp/vera-live URL="https://x-access-token:${VERA_PUSH_TOKEN}@github.com/dramralaa/vera-repo.git"
+            [ -n "$VERA_PUSH_TOKEN" ] && [ -f data/rest_store/vera_live_days.json ] || return 1
+            rm -rf $VR
+            if ! timeout 90 git clone -q --depth 1 --branch live-data "$URL" $VR 2>/dev/null; then
+              timeout 90 git clone -q --depth 1 "$URL" $VR || return 1
+              (cd $VR && git checkout -q --orphan live-data && git rm -rqf . >/dev/null 2>&1; true)
+            fi
+            mkdir -p $VR/data && cp data/rest_store/vera_live_days.json $VR/data/vera_live_days.json
+            (
+              cd $VR || exit 1
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add data/vera_live_days.json
+              if git diff --cached --quiet; then exit 0; fi
+              git commit -q -m "LIVE data [skip ci]" || exit 1
+              timeout 90 git push -q origin live-data
+            )
+          }
+
+          # 🟣 10 نوفمبر 2026: نشر مخزن فواتير فيرا + حزمة الأصناف/الأرصدة على فرع live-store (commit يتيم + force: بدون تضخّم تاريخ الريبو).
+          # الداشبورد (صفحات كريم) بتقراهم بدل XML-RPC المحجوب من جوليب. فشل النشر مش بيوقف الحلقة.
+          publish_vera_store() {
+            local VR=/tmp/vera-store URL="https://x-access-token:${VERA_PUSH_TOKEN}@github.com/dramralaa/vera-repo.git"
+            [ -n "$VERA_PUSH_TOKEN" ] && [ -f data/rest_store/vera_pos_store.json ] && [ -f data/rest_store/vera_dash_pack.json ] || return 1
+            rm -rf $VR && mkdir -p $VR/data && cp data/rest_store/vera_pos_store.json $VR/data/vera_pos_store.json && cp data/rest_store/vera_dash_pack.json $VR/data/vera_dash_pack.json
+            (
+              cd $VR || exit 1
+              git init -q -b live-store
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add data && git commit -q -m "store [skip ci]" || exit 1
+              timeout 120 git push -q --force "$URL" live-store
+            )
+          }
+
+          # 🔗 متابعة ملف الرصيد الجديد: لما ملف رصيد جديد يتقبل ويتنشر على main (stock_balance.json بيتغيّر generated_at)،
+          # نشغّل دورة المنصات مرة واحدة (حد أدنى 20 دقيقة بين تشغيلين) - من غير ما حد يدوس. أول استدعاء بيسجّل الوضع الحالي بس.
+          # مفيش أي طلب لجوليب أو المنصات هنا: fetch من GitHub فقط + طلب تشغيل لـplatform_cycle (نفس الدورة الموجودة).
+          stock_followup() {
+            timeout 30 git fetch -q origin main 2>/dev/null || return 0
+            local GEN
+            GEN=$(git show origin/main:data/stock_balance.json 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('generated_at',''))" 2>/dev/null) || GEN=""
+            [ -n "$GEN" ] || return 0
+            if [ -z "$LAST_STOCK_GEN" ]; then LAST_STOCK_GEN="$GEN"; return 0; fi
+            [ "$GEN" != "$LAST_STOCK_GEN" ] || return 0
+            local NOWTS; NOWTS=$(date +%s)
+            # لو لسه جوه الـ20 دقيقة: ما نسجّلش الملف كمتعالج، فيتنفّذ أول ما المهلة تخلص
+            [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge 1200 ] || return 0
+            LAST_STOCK_GEN="$GEN"
+            LAST_STOCK_DISPATCH=$NOWTS
+            local CODE
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/platform_cycle.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
+            echo "🔗 ملف رصيد جديد ($GEN) ← تشغيل دورة المنصات: HTTP $CODE"
+          }
+
+          stock_followup  # تسجيل الوضع الحالي كنقطة بداية
+          # مراقب مستقل كل 60 ثانية: بيشتغل حتى لو الدورة الأساسية في إعادة بناء ثقيلة (الفحص جوه الدورة كان بيتأخر)
+          ( while true; do sleep 60; stock_followup; done ) &
+          STOCK_WATCH_PID=$!
+          trap 'kill $STOCK_WATCH_PID 2>/dev/null || true' EXIT
+          START=$(date +%s)
+          DURATION=$((335 * 60))
+          FAILS=0
+          CYCLE=0
+          while true; do
+            CYCLE=$((CYCLE + 1))
+            CYCLE_START=$(date +%s)
+            echo "════════ دورة $CYCLE - $(date -u '+%H:%M:%S') UTC ════════"
+            if python juleb_rest_store.py; then FAILS=0; else FAILS=$((FAILS + 1)); echo "⚠️ السحب فشل ($FAILS)"; fi
+            if [ $FAILS -ge 3 ]; then
+              echo "::error::3 فشل متتالي في السحب - وقف الحلقة بدون إعادة تشغيل ذاتي (راجع اللوج)"
+              touch /tmp/no_relaunch
+              break
+            fi
+            (cd doom_trial_report && python live_refresh.py) || echo "⚠️ تحديث LIVE ما تمش"
+            # لقطة الدفعات + تواريخ الانتهاء (مرة كل يوم، بالتتابع بعد السحب الأول - مش متوازي): دوم ثم فيرا
+            BMARK=/tmp/batch_expiry_$(TZ=Asia/Riyadh date +%F)
+            if [ ! -f "$BMARK" ]; then
+              touch "$BMARK"
+              JULEB_API_KEY="$JULEB_API_KEY" JULEB_API_BASE=https://medova.juleb.com/api/v1 BATCH_OUT="$GITHUB_WORKSPACE/data/rest_store/batch_expiry_doom.json" REQ_CAP=40 python juleb_batch_expiry.py || echo "⚠️ لقطة دفعات دوم فشلت"
+              if [ -n "$JULEB_API_KEY_VERA" ]; then
+                JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 BATCH_OUT="$GITHUB_WORKSPACE/data/rest_store/batch_expiry_vera.json" REQ_CAP=40 python juleb_batch_expiry.py || echo "⚠️ لقطة دفعات فيرا فشلت"
+              fi
+              BATCH_FILES=(data/rest_store/batch_expiry_doom.json data/rest_store/batch_expiry_vera.json)
+            fi
+            FILES=(doom_trial_report/data_cache/live_days.json)
+            FILES+=("${BATCH_FILES[@]}"); BATCH_FILES=()
+            # صفوف فواتير المنصات (صفحة منصات التوصيل) من المخزن - صفر طلبات
+            # كل ساعة (كل رابع دورة) مش كل دورة - الملف كبير نسبيًا
+            if [ $((CYCLE % 4)) -eq 1 ]; then
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" ACTIVITY_PATH="$GITHUB_WORKSPACE/data/delivery_platform_activity.json" \
+                python platform_activity_from_store.py && FILES+=(data/delivery_platform_activity.json) || echo "⚠️ تحديث نشاط المنصات ما تمش"
+              # 10 نوفمبر 2026: بنود المبيعات الشهرية (صفحة النواقص) كانت بتتحدّث مرة بس يوميًا مع إعادة بناء الكاشات (فاتت 3 أيام 7-9 نوفمبر) - دلوقتي مع كل دورة رابعة (صفر طلبات، من المخزن)
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" POS_SALES_DIR="$GITHUB_WORKSPACE/data/pos_sales" python pos_sales_from_store.py \
+                && FILES+=(data/pos_sales/2026-11.json data/pos_sales/2026-12.json data/pos_sales/2027-01.json) || echo "⚠️ بنود المبيعات ما اتحدّثتش"
+            fi
+            # فيرا: بالتتابع بعد السحب الأول (ممنوع سحب متوازي) - سحب خفيف (≤40 طلب) ثم ملف LIVE فيرا. 3 فشل متتالي = نوقف فيرا بس.
+            if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
+              if JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 PROBE_BRAND=vera \
+                 STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" REQ_CAP=40 STATIC_TTL=3600 \
+                 STORE_BACKFILL_FROM='2026-10-31 21:00:00' python juleb_rest_store.py; then VFAILS=0; else VFAILS=$((${VFAILS:-0} + 1)); echo "⚠️ سحب فيرا فشل (${VFAILS})"; fi
+              VERA_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" VERA_LIVE_OUT="$GITHUB_WORKSPACE/data/rest_store/vera_live_days.json" \
+                python vera_live_refresh.py || echo "⚠️ تحديث LIVE فيرا ما تمش"
+              FILES+=(data/rest_store/vera_live_days.json)
+              # نشر ملف LIVE فيرا على ريبو فيرا الخاص (فرع live-data) - الداشبورد بتقراه من هناك. فشل النشر مش بيوقف الحلقة.
+              publish_vera || echo "⚠️ نشر ملف فيرا فشل"
+              # حزمة أصناف/أرصدة فيرا (من ملفات الريبو، صفر طلبات) + نشر المخزن: كل رابع دورة (~36 دقيقة)
+              if [ $((CYCLE % 4)) -eq 1 ]; then
+                python vera_dash_pack.py && publish_vera_store || echo "⚠️ نشر مخزن فيرا فشل"
+              fi
+            fi
+            YEST=$(TZ=Asia/Riyadh date -d 'yesterday' +%F)
+            CUR=$(python3 -c "import json;print(json.load(open('doom_trial_report/data_cache/profit_ratio_cur.json')).get('end_date',''))" 2>/dev/null)
+            # إعادة بناء تانية الصبح (8-10 الرياض): تكلفة بنود سيشنات الليل بتتحسب بعد قفلها فبنعيد البناء بعد ما المخزن يستكمل التكلفة
+            HH=$((10#$(TZ=Asia/Riyadh date +%H))); MARK=/tmp/morning_rebuild_$(TZ=Asia/Riyadh date +%F)
+            NEED=0; [ "$CUR" != "$YEST" ] && NEED=1
+            # إعادة بناء إجبارية مرة واحدة بعد إصلاح المدفوعات في بديل XML-RPC (علامة بتتحفظ مع الكاشات)
+            FIXMARK=doom_trial_report/data_cache/.rebuilt_list_override_v4
+            [ -f "$FIXMARK" ] || NEED=1
+            if [ $NEED -eq 0 ] && [ $HH -ge 8 ] && [ $HH -lt 10 ] && [ ! -f "$MARK" ]; then NEED=1; touch "$MARK"; fi
+            # 10 نوفمبر 2026 (قرار د. عمرو): كاش تراكمي أكتر من مرة في اليوم - كل 8 دورات (~72 دقيقة) من 7 ص لـ11 م بنعيد بناء الشهر الحالي بس (الأرشيف ثابت، من المخزن المحلي: صفر طلبات)
+            if [ $NEED -eq 0 ] && [ $((CYCLE % 8)) -eq 3 ] && [ $HH -ge 7 ] && [ $HH -lt 23 ]; then NEED=1; fi
+            if [ $NEED -eq 1 ]; then
+              echo "🗄️ كاشات اليوم السابق ($CUR → $YEST): إعادة بناء"
+              # بنود المبيعات للشهر (صفحة النواقص) من المخزن - بتتحدث مع إعادة البناء بس عشان حجم الملف
+              REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" POS_SALES_DIR="$GITHUB_WORKSPACE/data/pos_sales" python pos_sales_from_store.py \
+                && FILES+=(data/pos_sales/2026-11.json data/pos_sales/2026-12.json data/pos_sales/2027-01.json) || echo "⚠️ بنود المبيعات ما اتبنتش"
+              touch /tmp/rb_start; sleep 1
+              if (cd doom_trial_report && python rest_cache_run.py); then
+                # العلامة بتتسجّل بس لو كاش الربح اتبنى فعلًا (rest_cache_run بيطلع 0 حتى لو تخطى الكاشات الثقيلة)
+                [ doom_trial_report/data_cache/profit_ratio_cur.json -nt /tmp/rb_start ] && touch "$FIXMARK"
+                FILES+=(doom_trial_report/data_cache/*.json "$FIXMARK" data/rest_store/pos_store.json data/rest_store/vera_pos_store.json)
+              else
+                echo "⚠️ إعادة بناء الكاشات ما اكتملتش"
+              fi
+            fi
+            # المخزن كل ساعة (كل رابع دورة) عشان أي إعادة تشغيل ما تضيّعش تقدم السحب
+            if [ $((CYCLE % 4)) -eq 1 ]; then FILES+=(data/rest_store/pos_store.json data/rest_store/vera_pos_store.json); fi
+            push_files "${FILES[@]}" || echo "⚠️ push فشل"
+            ELAPSED=$(( $(date +%s) - START ))
+            [ $ELAPSED -ge $DURATION ] && break
+            H=$((10#$(TZ=Asia/Riyadh date +%H)))
+            if [ $H -ge 7 ] || [ $H -lt 2 ]; then SLEEP=900; else SLEEP=1800; fi
+            REM=$((DURATION - ELAPSED)); [ $SLEEP -gt $REM ] && SLEEP=$REM
+            [ $FAILS -gt 0 ] && SLEEP=$((SLEEP + 900))
+            # تحديث عند الطلب: بنصحى كل دقيقة ونفحص طلب الصفحة (ملف live_request.json على الفرع المنشور)؛ لو فيه طلب أحدث من آخر دورة وعدّى 10 دقايق
+            # من بداية آخر دورة نعمل دورة فورًا. وإلا بنكمّل لحد SLEEP (احتياطي: 30 دقيقة نهارًا، ساعة ليلًا).
+            if [ $H -ge 7 ] || [ $H -lt 2 ]; then SLEEP=540; else SLEEP=1800; fi  # 10 نوفمبر 2026 (قرار صاحب المشروع): LIVE كل 9 دقايق نهارًا/مساءً (كان 30)، وكل 30 دقيقة من 02:00 لـ07:00
+            [ $SLEEP -gt $REM ] && SLEEP=$REM
+            [ $FAILS -gt 0 ] && SLEEP=$((SLEEP + 600))
+            WAITED=0
+            while [ $WAITED -lt $SLEEP ]; do
+              sleep 60; WAITED=$((WAITED + 60))
+              stock_followup
+              [ $(( $(date +%s) - CYCLE_START )) -ge 540 ] || continue   # حد أدنى 9 دقايق من بداية آخر دورة
+              timeout 60 git fetch -q origin $BR 2>/dev/null || continue
+              REQ=$(git show origin/$BR:doom_trial_report/data_cache/live_request.json 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
+              if [ "${REQ:-0}" -gt "$CYCLE_START" ]; then echo "🔔 طلب تحديث من الصفحة - دورة فورية"; break; fi
+              if [ -n "$VERA_PUSH_TOKEN" ]; then
+                VREQ=$(curl -sS --max-time 20 -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/dramralaa/vera-repo/contents/data/vera_live_request.json?ref=live-data" 2>/dev/null | python3 -c "import sys,json;from datetime import datetime;print(int(datetime.fromisoformat(json.load(sys.stdin)['requested_at']).timestamp()))" 2>/dev/null || echo 0)
+                if [ "${VREQ:-0}" -gt "$CYCLE_START" ]; then echo "🔔 طلب تحديث من صفحة فيرا - دورة فورية"; break; fi
+              fi
+            done
+          done
+          push_files data/rest_store/pos_store.json doom_trial_report/data_cache/live_days.json || true
+      - name: Self-relaunch
+        if: always()
+        run: |
+          [ -f /tmp/no_relaunch ] && { echo "لا إعادة تشغيل (وقف بسبب فشل متكرر)"; exit 0; }
+          curl -sS -X POST \
+            -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/doom_live_loop.yml/dispatches" \
+            -d '{"ref":"main"}'
