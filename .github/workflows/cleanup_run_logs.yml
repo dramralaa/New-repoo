@@ -22,10 +22,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # 11 نوفمبر 2026: سجلات تشغيل دفتر الرصيد بتتحفظ 3 أيام (بدل ساعتين) عشان نشخّص ليه التشغيلات المجدولة بتسقط/بتفشل.
+          # لوج الدفتر أعداد وأوقات بس (مفيش أسماء ولا أرصدة)، والريبو عام فالمدة محدودة. باقي الـworkflows زي ما هي.
+          LEDGER_WF=".github/workflows/juleb_stock_ledger_shadow.yml"
           CUT=$(date -u -d '2 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           for page in 1 2 3 4 5 6; do
-            ids=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100&status=completed&created=<$CUT" --jq '.workflow_runs[].id')
+            ids=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100&status=completed&created=<$CUT" --jq ".workflow_runs[] | select(.path != \"$LEDGER_WF\") | .id")
             [ -z "$ids" ] && break
             echo "$ids" | xargs -P 4 -I{} sh -c 'gh api -X DELETE repos/${{ github.repository }}/actions/runs/{} >/dev/null 2>&1'
           done
+          CUT_LEDGER=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          ids=$(gh api "repos/${{ github.repository }}/actions/workflows/juleb_stock_ledger_shadow.yml/runs?per_page=100&status=completed&created=<$CUT_LEDGER" --jq '.workflow_runs[].id')
+          [ -n "$ids" ] && echo "$ids" | xargs -P 4 -I{} sh -c 'gh api -X DELETE repos/${{ github.repository }}/actions/runs/{} >/dev/null 2>&1'
           echo "تم"
