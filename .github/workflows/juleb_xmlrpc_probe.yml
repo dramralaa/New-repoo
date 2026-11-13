@@ -1,0 +1,55 @@
+# 🔬 اختبار XML-RPC حاسم (يدوي فقط، بموافقة صاحب الحساب): authenticate مرة واحدة + execute_kw قراءة واحدة (stock.quant، صف واحد).
+# بيانات الدخول الصحيحة للواجهة (*_DOOM). بدون إعادة محاولة، بدون كتابة، ولا بيطبع أي سر أو uid أو بيانات صف. اللوج: كلمات حالة فقط.
+name: 🔬 اختبار XML-RPC (طلبان فقط)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-openapi
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: authenticate + one read
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          URL: ${{ secrets.JULEB_URL_DOOM }}
+          DB: ${{ secrets.JULEB_DB_DOOM }}
+          USR: ${{ secrets.JULEB_USER_DOOM }}
+          PWD_: ${{ secrets.JULEB_PASS_DOOM }}
+        run: |
+          python - <<'PY'
+          import json, os, xmlrpc.client as X
+          if any(x in os.environ.get("PLATFORM_PAUSE", "").lower().replace(";", ",").split(",") for x in ("juleb", "all")):
+              raise SystemExit("⛔ زرار الإيقاف مفعّل")
+          url, db, usr, pw = os.environ["URL"].rstrip("/"), os.environ["DB"], os.environ["USR"], os.environ["PWD_"]
+          out = {}
+          uid = None
+          try:
+              uid = X.ServerProxy(url + "/xmlrpc/2/common").authenticate(db, usr, pw, {})
+              out["authenticate"] = "uid_ok" if isinstance(uid, int) and uid > 0 else "returned_false"
+          except X.ProtocolError as e:
+              out["authenticate"] = f"http_{e.errcode}"
+          except X.Fault:
+              out["authenticate"] = "xmlrpc_fault"
+          except Exception as e:
+              out["authenticate"] = type(e).__name__
+          if out["authenticate"] == "uid_ok":
+              try:
+                  rows = X.ServerProxy(url + "/xmlrpc/2/object").execute_kw(db, uid, pw, "stock.quant", "search_read", [[]], {"fields": ["product_id", "location_id", "quantity", "company_id"], "limit": 1})
+                  out["read_stock_quant"] = "ok"; out["rows"] = len(rows)
+              except X.ProtocolError as e:
+                  out["read_stock_quant"] = f"http_{e.errcode}"
+              except X.Fault as e:
+                  out["read_stock_quant"] = "xmlrpc_fault"
+              except Exception as e:
+                  out["read_stock_quant"] = type(e).__name__
+          print("RESULT", json.dumps(out))
+          PY
