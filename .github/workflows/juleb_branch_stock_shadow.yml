@@ -1,0 +1,63 @@
+# 🔎 قارئ Branch Stock (shadow) بمستخدم جوليب مخصص للقراءة فقط - يدوي فقط، مش متصل بأي مزامنة.
+# الأسرار (تضيفها أنت في Settings → Secrets): JULEB_DB (موجود من قبل) + JULEB_RO_USER + JULEB_RO_PASS. ما بتظهرش في أي لوج.
+# التشغيل الأول: max_pages=1 (طلبان: دخول + صفحة 80 صف). max_pages=0 = سحب كامل بعد ما العينة تنجح.
+name: 🔎 قارئ Branch Stock (shadow، قراءة فقط)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: '1 = عينة (افتراضي)، 0 = سحب كامل'
+        default: '1'
+      page_size:
+        description: 'حجم الصفحة'
+        default: '80'
+      ref:
+        description: 'فرع/ref الكود في juleb-daily-report'
+        default: 'main'
+
+concurrency:
+  group: juleb-branch-stock-shadow
+  cancel-in-progress: false
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Read Branch Stock (read-only)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_DB: ${{ secrets.JULEB_DB }}
+          JULEB_RO_USER: ${{ secrets.JULEB_RO_USER }}
+          JULEB_RO_PASS: ${{ secrets.JULEB_RO_PASS }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages }}
+          PAGE_SIZE: ${{ github.event.inputs.page_size }}
+        run: python juleb_branch_stock_shadow_run.py
+      - name: Commit result (private repo)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/branch_stock_shadow_probe.json ] || exit 0
+          mkdir -p /tmp/out && cp data/branch_stock_shadow_probe.json /tmp/out/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/branch_stock_shadow_probe.json data/
+            git add data/branch_stock_shadow_probe.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔎 قارئ Branch Stock (shadow) [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
