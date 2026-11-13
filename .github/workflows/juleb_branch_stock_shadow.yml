@@ -1,5 +1,6 @@
 # 🔎 قارئ Branch Stock (shadow) بمستخدم جوليب مخصص للقراءة فقط - يدوي فقط، مش متصل بأي مزامنة.
-# الأسرار (تضيفها أنت في Settings → Secrets): JULEB_DB (موجود من قبل) + JULEB_RO_USER + JULEB_RO_PASS. ما بتظهرش في أي لوج.
+# الأسرار الموجودة أصلًا: JULEB_URL_DOOM + JULEB_DB_DOOM + JULEB_USER_DOOM + JULEB_PASS_DOOM (بيانات دخول دوم القديمة). ما بتظهرش في أي لوج.
+# الأفضل لاحقًا: مستخدم مخصص للقراءة فقط بدل المستخدم ده (الكود نفسه بيقرأ موديل واحد فقط ومابيكتبش حاجة).
 # التشغيل الأول: max_pages=1 (طلبان: دخول + صفحة 80 صف). max_pages=0 = سحب كامل بعد ما العينة تنجح.
 name: 🔎 قارئ Branch Stock (shadow، قراءة فقط)
 
@@ -37,9 +38,10 @@ jobs:
       - name: Read Branch Stock (read-only)
         env:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
-          JULEB_DB: ${{ secrets.JULEB_DB }}
-          JULEB_RO_USER: ${{ secrets.JULEB_RO_USER }}
-          JULEB_RO_PASS: ${{ secrets.JULEB_RO_PASS }}
+          JULEB_WEB_ORIGIN: ${{ secrets.JULEB_URL_DOOM }}
+          JULEB_DB: ${{ secrets.JULEB_DB_DOOM }}
+          JULEB_RO_USER: ${{ secrets.JULEB_USER_DOOM }}
+          JULEB_RO_PASS: ${{ secrets.JULEB_PASS_DOOM }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
           PAGE_SIZE: ${{ github.event.inputs.page_size }}
         run: python juleb_branch_stock_shadow_run.py
