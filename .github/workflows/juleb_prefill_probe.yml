@@ -1,0 +1,89 @@
+# 🧪 اختبار لمرة واحدة (بموافقة صاحب الحساب): هل إنشاء جرد بـprefill_counted_quantity بيرجّع الرصيد النظري الحالي؟
+# ⚠️ فيه POST واحد بينشئ **مسودة جرد واحدة بصنف واحد** في جوليب (مفيش DELETE في الـAPI؛ تتمسح من الواجهة). مفيش validate ولا restart.
+# بعد الاستخدام: يتشال الـworkflow ده من main. بيقف عند أي رفض (403 = المفتاح قراءة فقط، ومفيش أثر).
+name: 🧪 اختبار جرد prefill (لمرة واحدة - POST واحد)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'اكتب بالظبط: I_APPROVE_ONE_DRAFT_ADJUSTMENT'
+        required: true
+
+concurrency:
+  group: juleb-openapi
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: One draft adjustment + read its lines
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          KEY_DOOM: ${{ secrets.JULEB_API_KEY_DOOM }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          python - <<'PY'
+          import json, os, time
+          import requests
+          if os.environ.get("CONFIRM") != "I_APPROVE_ONE_DRAFT_ADJUSTMENT":
+              raise SystemExit("⛔ التأكيد غير صحيح - مفيش أي طلب اتبعت")
+          if any(x in os.environ.get("PLATFORM_PAUSE", "").lower().replace(";", ",").split(",") for x in ("juleb", "all")):
+              raise SystemExit("⛔ زرار الإيقاف مفعّل")
+          BASE = "https://medova.juleb.com/api/v1"
+          H = {"Authorization": "Bearer " + os.environ["KEY_DOOM"], "Content-Type": "application/json"}
+          out = {"when_utc": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())}
+          body = {"adjustment_type": "quantity", "name": "API-READ-TEST-DELETE-ME", "company_id": 8, "product_ids": [3517], "prefill_counted_quantity": True}
+          r = requests.post(BASE + "/inventory/inventory-adjustments", json=body, headers=H, timeout=60, allow_redirects=False)
+          out["post_status"] = r.status_code
+          try: j = r.json()
+          except Exception: j = {}
+          out["post_keys"] = sorted(j.keys()) if isinstance(j, dict) else None
+          print("POST status", r.status_code)
+          adj_id = None
+          if r.status_code in (200, 201) and isinstance(j, dict):
+              d = j.get("data") if isinstance(j.get("data"), dict) else j
+              adj_id = d.get("id") if isinstance(d, dict) else None
+          out["adjustment_id"] = adj_id
+          if adj_id:
+              time.sleep(3)
+              r2 = requests.get(f"{BASE}/inventory/inventory-adjustments/{adj_id}/lines", params={"fields": "id,product_id,theoretical_qty,product_qty,location_id,company_id", "limit": 50, "page": 1}, headers=H, timeout=60)
+              out["lines_status"] = r2.status_code
+              try: out["lines"] = r2.json().get("data")
+              except Exception: out["lines"] = None
+              print("lines status", r2.status_code, "n", len(out["lines"] or []))
+          else:
+              out["post_error"] = (j.get("message") if isinstance(j, dict) else None)
+              print("لا مستند اتنشأ. السبب:", str(out.get("post_error"))[:160])
+          os.makedirs("data", exist_ok=True)
+          json.dump(out, open("data/prefill_probe.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          PY
+      - name: Commit result (private repo)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/prefill_probe.json ] || exit 0
+          mkdir -p /tmp/out && cp data/prefill_probe.json /tmp/out/
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/out/prefill_probe.json data/
+            git add data/prefill_probe.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🧪 اختبار جرد prefill [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
