@@ -1,10 +1,14 @@
 name: 🕘 [DOOM] مواعيد الفروع على المنصات ← شيفتي
 
+# 15 نوفمبر 2026: الـcron كل 10 دقايق اتشال - التشغيل من doom_live_loop في مواعيد ثابتة بس
+# (جاهز 01:30/03/04/06/07/08 الرياض، وهنجرستيشن 01:30 و08:00 بس عن طريق hs=1).
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
+      hs:
+        description: 'اقرا مواعيد هنجرستيشن من البوابة كمان (1) - مرتين يوميًا بس'
+        required: false
+        default: '0'
       enroll_code:
         description: 'كود ربط شيفتي (أول مرة بس)'
         required: false
@@ -35,6 +39,7 @@ jobs:
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           ENROLL_CODE: ${{ github.event.inputs.enroll_code }}
+          SKIP_HS_HOURS: ${{ github.event.inputs.hs == '1' && '0' || '1' }}
         run: python doom_platform_hours_sync.py
       - name: Commit result
         if: always()

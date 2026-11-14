@@ -128,13 +128,21 @@ jobs:
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_shifty_incentives_push.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
               echo "🏅 تشغيل حوافز شيفتي: HTTP $CODE"
             fi
-            # 🕘 15 نوفمبر 2026: مواعيد الفروع على المنصات → شيفتي كل ساعة (الـcron كل 10 د مابيشتغلش بانتظام - آخر تحديث كان من ساعات)
-            LASTF=/tmp/last_pull_dispatch_hours
-            if [ $((NOWTS - $(cat "$LASTF" 2>/dev/null || echo 0))) -ge 3600 ]; then
-              echo "$NOWTS" > "$LASTF"
+            # 🕘 15 نوفمبر 2026 (قرار صاحب المشروع): مواعيد/حالة الفروع على المنصات → شيفتي في مواعيد ثابتة بس (تنبيه أول وآخر اليوم):
+            # جاهز 01:30 و03:00 و04:00 و06:00 و07:00 و08:00 الرياض، وهنجرستيشن (دخول البوابة) مرتين بس 01:30 و08:00
+            # (هنجر وقّفناها 30 أكتوبر بعد تحذيرهم من كثرة الطلبات - مرتين في اليوم = دخول واحد + قراءة لكل فرع، أقل بكتير من أي حد).
+            # كل موعد مرة واحدة (علامة في /tmp)، ونافذة 45 دقيقة لو الحلقة كانت مشغولة.
+            NMR=$((10#$(TZ=Asia/Riyadh date +%H) * 60 + 10#$(TZ=Asia/Riyadh date +%M))); SLOT=""
+            for S in 0130 0300 0400 0600 0700 0800; do
+              SM=$((10#${S:0:2} * 60 + 10#${S:2:2}))
+              if [ $NMR -ge $SM ] && [ $NMR -lt $((SM + 45)) ]; then SLOT=$S; fi
+            done
+            if [ -n "$SLOT" ] && [ ! -f "/tmp/hours_slot_$(TZ=Asia/Riyadh date +%F)_$SLOT" ]; then
+              touch "/tmp/hours_slot_$(TZ=Asia/Riyadh date +%F)_$SLOT"
+              HSF=0; case $SLOT in 0130|0800) HSF=1 ;; esac
               CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_platform_hours_sync.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
-              echo "🕘 تشغيل مواعيد المنصات: HTTP $CODE"
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_platform_hours_sync.yml/dispatches" -d "{\"ref\":\"main\",\"inputs\":{\"hs\":\"$HSF\"}}" 2>/dev/null || echo 000)
+              echo "🕘 مواعيد المنصات (موعد $SLOT، هنجر=$HSF): HTTP $CODE"
             fi
             # 🧾 15 نوفمبر 2026: فواتير الاستلام (صفحة Purchase Intelligence) كل 3 ساعات - سحب تراكمي خفيف (طلبات قليلة)
             LASTF=/tmp/last_pull_dispatch_receipts
