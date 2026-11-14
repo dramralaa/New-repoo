@@ -6,8 +6,7 @@
 name: 📡 فيرا - سحب Branch Stock الآلي
 
 on:
-  schedule:
-    - cron: '17 * * * *'
+  # 14 نوفمبر 2026: الجدولة بـcron اتشالت (ما اشتغلتش ولا مرة). التشغيل بـworkflow_dispatch من حلقة LIVE (doom_live_loop.yml → pull_dispatch).
   workflow_dispatch:
     inputs:
       ref:

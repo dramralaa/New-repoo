@@ -7,9 +7,7 @@
 name: 📡 سحب Branch Stock الآلي (رصيد دوم)
 
 on:
-  schedule:
-    - cron: '7,37 4-22 * * *'
-    - cron: '7 23,0-3 * * *'
+  # 14 نوفمبر 2026: الجدولة بـcron اتشالت (ما اشتغلتش ولا مرة). التشغيل بـworkflow_dispatch من حلقة LIVE (doom_live_loop.yml → pull_dispatch).
   workflow_dispatch:
     inputs:
       ref:
