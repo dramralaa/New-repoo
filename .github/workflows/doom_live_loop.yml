@@ -120,6 +120,14 @@ jobs:
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/$F/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
               echo "📚 تشغيل تحديث الأصناف ($B): HTTP $CODE"
             done
+            # 🧾 15 نوفمبر 2026: فواتير الاستلام (صفحة Purchase Intelligence) كل 3 ساعات - سحب تراكمي خفيف (طلبات قليلة)
+            LASTF=/tmp/last_pull_dispatch_receipts
+            if [ $((NOWTS - $(cat "$LASTF" 2>/dev/null || echo 0))) -ge 10800 ]; then
+              echo "$NOWTS" > "$LASTF"
+              CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_purchase_receipts.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
+              echo "🧾 تشغيل فواتير الاستلام: HTTP $CODE"
+            fi
             for B in doom vera; do
               F=juleb_branch_stock_pull.yml; GAP=$GAPD
               if [ "$B" = vera ]; then F=vera_branch_stock_pull.yml; GAP=3600; fi
