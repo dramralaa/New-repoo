@@ -1,4 +1,4 @@
-# 📚 تحديث ملف الأصناف data/products.json عبر REST (يدوي، قراءة فقط). ≈ 11 طلب صفحات + 6 فحوص حقول، مسافة 3 ث، سقف 40، بلا إعادة محاولة.
+# 📚 تحديث ملف الأصناف data/products.json عبر REST (يدوي، قراءة فقط). ≈ 11 طلب صفحات + 6 فحوص حقول، مسافة 3 ث، سقف 70، بلا إعادة محاولة.
 # الأسرار (أسماء): JULEB_API_KEY_DOOM, CROSS_REPO_TOKEN. أي فشل/نقص = بدون commit.
 name: 📚 تحديث ملف الأصناف (REST، يدوي)
 
@@ -32,7 +32,7 @@ jobs:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
-          REQ_CAP: '40'
+          REQ_CAP: '70'
         run: |
           case ",${PLATFORM_PAUSE,,}," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
           python juleb_products_rest.py
