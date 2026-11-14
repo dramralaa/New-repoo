@@ -50,7 +50,14 @@ jobs:
             cp data/branch_stock_web_status.json /tmp/pub/data/
             [ -f data/stock_balance_web.json ] && cp data/stock_balance_web.json /tmp/pub/data/
             grep -q branch_stock_web data/stock_balance.json 2>/dev/null && cp data/stock_balance.json /tmp/pub/data/
+            # ⏳ 15 نوفمبر 2026: لقطة التشغيلات/الانتهاء (REST، يوميًا من الحلقة على فرع النشر) → main لصفحة «إزالة الإكسبير» في داشبورد عمرو.
+            # بتتنسخ بس لو JSON سليم وفيه صفوف كفاية (أي فشل = الملف القديم يفضل). صفر طلبات لجوليب.
+            curl -sS --max-time 60 -o /tmp/batch.json -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" -H "Accept: application/vnd.github.raw" \
+              "https://api.github.com/repos/dramralaa/juleb-daily-report/contents/data/rest_store/batch_expiry_doom.json?ref=claude/assortment-webhook-discovery-a4mxc6" \
+              && python3 -c "import json,sys; d=json.load(open('/tmp/batch.json')); sys.exit(0 if len(d.get('rows') or [])>1000 and d.get('generated_at') else 1)" \
+              && cp /tmp/batch.json /tmp/pub/data/batch_expiry_doom.json || echo "⚠️ لقطة التشغيلات ما اتنسختش"
             git -C /tmp/pub add data/branch_stock_web_status.json data/stock_balance_web.json data/stock_balance.json
+            [ -f /tmp/pub/data/batch_expiry_doom.json ] && git -C /tmp/pub add data/batch_expiry_doom.json
             git -C /tmp/pub diff --cached --quiet && exit 0
             git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "📡 رصيد Branch Stock الآلي [vercel skip]"
             git -C /tmp/pub push -q origin HEAD:main && exit 0
