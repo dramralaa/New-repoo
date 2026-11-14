@@ -120,6 +120,14 @@ jobs:
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/$F/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
               echo "📚 تشغيل تحديث الأصناف ($B): HTTP $CODE"
             done
+            # 🏅 15 نوفمبر 2026: حوافز شيفتي مرة يوميًا بعد منتصف الليل (00:15-03:00 الرياض) - الـcron مش موثوق
+            DAYMARK=/tmp/last_shifty_inc_$(TZ=Asia/Riyadh date +%F); MIN=$((10#$(TZ=Asia/Riyadh date +%H%M)))
+            if [ ! -f "$DAYMARK" ] && [ $MIN -ge 15 ] && [ $MIN -lt 300 ]; then
+              touch "$DAYMARK"
+              CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_shifty_incentives_push.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
+              echo "🏅 تشغيل حوافز شيفتي: HTTP $CODE"
+            fi
             # 🧾 15 نوفمبر 2026: فواتير الاستلام (صفحة Purchase Intelligence) كل 3 ساعات - سحب تراكمي خفيف (طلبات قليلة)
             LASTF=/tmp/last_pull_dispatch_receipts
             if [ $((NOWTS - $(cat "$LASTF" 2>/dev/null || echo 0))) -ge 10800 ]; then
