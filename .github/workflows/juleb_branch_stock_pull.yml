@@ -51,7 +51,8 @@ jobs:
             git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/pub || { sleep 4; continue; }
             cp data/branch_stock_web_status.json /tmp/pub/data/
             [ -f data/stock_balance_web.json ] && cp data/stock_balance_web.json /tmp/pub/data/
-            git -C /tmp/pub add data/branch_stock_web_status.json data/stock_balance_web.json
+            grep -q branch_stock_web data/stock_balance.json 2>/dev/null && cp data/stock_balance.json /tmp/pub/data/
+            git -C /tmp/pub add data/branch_stock_web_status.json data/stock_balance_web.json data/stock_balance.json
             git -C /tmp/pub diff --cached --quiet && exit 0
             git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "📡 رصيد Branch Stock الآلي [vercel skip]"
             git -C /tmp/pub push -q origin HEAD:main && exit 0
