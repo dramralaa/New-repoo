@@ -1,9 +1,9 @@
 name: 🔁 [DOOM] Sync Loop - Juleb Bridge (منتجات + أرصدة)
 
+# 14 نوفمبر 2026: متوقّف بقرار صاحب المشروع. XML-RPC /object محجوب (403) منذ 2 نوفمبر، ومصدر الرصيد بقى السحب الآلي (juleb_branch_stock_pull)
+# اللي بيكتب data/stock_balance.json. الحلقة دي كانت بتكتب نفس الملف ومنع تعارض. للتشغيل اليدوي فقط (workflow_dispatch) بدون جدولة ولا self-relaunch.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '10 * * * *'
 
 concurrency:
   group: doom-sync-loop-juleb-bridge
@@ -121,7 +121,7 @@ jobs:
             [ $(( $(date +%s) - START )) -ge $DURATION ] && break
           done
       - name: Self-relaunch (بدء نافذة ~5.5 ساعة تانية فورًا)
-        if: always()
+        if: ${{ false }}
         run: |
           curl -sS -X POST \
             -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" \
