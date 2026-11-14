@@ -42,6 +42,8 @@ jobs:
         run: python juleb_branch_stock_pull.py
         continue-on-error: true
       - name: Commit result (private repo)
+        env:
+          PUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: |
           [ -f data/branch_stock_web_status.json ] || exit 0
           for i in 1 2 3 4 5 6 7 8; do
@@ -56,6 +58,38 @@ jobs:
               "https://api.github.com/repos/dramralaa/juleb-daily-report/contents/data/rest_store/batch_expiry_doom.json?ref=claude/assortment-webhook-discovery-a4mxc6" \
               && python3 -c "import json,sys; d=json.load(open('/tmp/batch.json')); sys.exit(0 if len(d.get('rows') or [])>1000 and d.get('generated_at') else 1)" \
               && cp /tmp/batch.json /tmp/pub/data/batch_expiry_doom.json || echo "⚠️ لقطة التشغيلات ما اتنسختش"
+            # 🧾 15 نوفمبر 2026: سطور مبيعات الشهر (data/pos_sales/<YYYY-MM>.json، من مخزن الـAPI على فرع النشر) → main لصفحات داشبورد عمرو
+            # (عروض جاهز/تدوير المخزون). الشهر الحالي والسابق، بس لو نسخة main أقدم من 6 ساعات (تقليل حجم الريبو). صفر طلبات لجوليب.
+            python3 - <<'PY' || echo "⚠️ نسخ سطور المبيعات ما تمش"
+          import json, os, subprocess, urllib.request
+          from datetime import datetime, timedelta, timezone
+          R = timezone(timedelta(hours=3)); now = datetime.now(R)
+          prev = (now.replace(day=1) - timedelta(days=1))
+          tok = os.environ["PUB_TOKEN"]
+          for ym in (now.strftime("%Y-%m"), prev.strftime("%Y-%m")):
+              dst = f"/tmp/pub/data/pos_sales/{ym}.json"
+              try:
+                  old = json.load(open(dst)).get("generated_at", "")
+              except Exception:
+                  old = ""
+              if old and (now.replace(tzinfo=None) - datetime.strptime(old[:19], "%Y-%m-%d %H:%M:%S")).total_seconds() < 6 * 3600:
+                  continue
+              if old and ym != now.strftime("%Y-%m") and old[:10] > f"{ym}-31":
+                  continue  # الشهر السابق اتقفل ونسخته بعد نهايته موجودة
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/dramralaa/juleb-daily-report/contents/data/pos_sales/{ym}.json?ref=claude/assortment-webhook-discovery-a4mxc6",
+                  headers={"Authorization": f"token {tok}", "Accept": "application/vnd.github.raw"})
+              try:
+                  raw = urllib.request.urlopen(req, timeout=60).read()
+                  d = json.loads(raw)
+              except Exception as e:
+                  print("⚠️", ym, type(e).__name__); continue
+              if d.get("count") and len(d.get("lines") or []) == d["count"] and d.get("generated_at", "") > old:
+                  os.makedirs(os.path.dirname(dst), exist_ok=True)
+                  open(dst, "wb").write(raw)
+                  subprocess.run(["git", "-C", "/tmp/pub", "add", dst], check=True)
+                  print("🧾 نسخ", ym, d["count"])
+          PY
             git -C /tmp/pub add data/branch_stock_web_status.json data/stock_balance_web.json data/stock_balance.json
             [ -f /tmp/pub/data/batch_expiry_doom.json ] && git -C /tmp/pub add data/batch_expiry_doom.json
             git -C /tmp/pub diff --cached --quiet && exit 0
