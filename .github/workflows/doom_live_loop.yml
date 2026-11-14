@@ -252,6 +252,8 @@ jobs:
             fi
             # المخزن كل ساعة (كل رابع دورة) عشان أي إعادة تشغيل ما تضيّعش تقدم السحب
             if [ $((CYCLE % 4)) -eq 1 ]; then FILES+=(data/rest_store/pos_store.json data/rest_store/vera_pos_store.json); fi
+            # 15 نوفمبر 2026: قايمة إعادة سحب البنود بتتحفظ بعد ما تتقلّص (عشان إعادة التشغيل ما تعيدش نفس الفواتير)
+            for RF in data/rest_store/refresh_lines_doom.json data/rest_store/refresh_lines_vera.json; do [ -f "$RF" ] && FILES+=("$RF" data/rest_store/pos_store.json); done
             push_files "${FILES[@]}" || echo "⚠️ push فشل"
             ELAPSED=$(( $(date +%s) - START ))
             [ $ELAPSED -ge $DURATION ] && break
