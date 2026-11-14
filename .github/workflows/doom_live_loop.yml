@@ -112,7 +112,10 @@ jobs:
             [ "$GEN" != "$LAST_STOCK_GEN" ] || return 0
             local NOWTS; NOWTS=$(date +%s)
             # لو لسه جوه الـ20 دقيقة: ما نسجّلش الملف كمتعالج، فيتنفّذ أول ما المهلة تخلص
-            [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge 1200 ] || return 0
+            # 14 نوفمبر 2026 (قرار صاحب المشروع): تخفيف الحمل على المنصات - كل 30 دقيقة وقت الذروة (13:00-24:00 رياض)، وكل 120 دقيقة باقي اليوم
+            local HRN MINGAP; HRN=$((10#$(TZ=Asia/Riyadh date +%H)))
+            if [ $HRN -ge 13 ]; then MINGAP=1800; else MINGAP=7200; fi
+            [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge $MINGAP ] || return 0
             LAST_STOCK_GEN="$GEN"
             LAST_STOCK_DISPATCH=$NOWTS
             local CODE
