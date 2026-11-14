@@ -24,11 +24,13 @@ jobs:
           ref: claude/assortment-webhook-discovery-a4mxc6
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           fetch-depth: 0
-      - name: Bring in latest main scripts
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch -q origin main && git merge -q --no-edit origin/main
+      # السكربت من main في مجلد منفصل - ممنوع دمج main جوه فرع النشر هنا (الـrebase في خطوة الدفع كان بيفرد الدمج ويعمل تعارض، 15 نوفمبر)
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: main
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          path: _src
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -42,10 +44,13 @@ jobs:
         run: |
           [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
           case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
-          python juleb_purchase_receipts_rest.py
+          RECEIPTS_OUT="$GITHUB_WORKSPACE/doom_trial_report/data_cache/purchase_receipts.json" \
+          REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" python _src/juleb_purchase_receipts_rest.py
       - name: Commit
         if: always()
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add doom_trial_report/data_cache/purchase_receipts.json data/health/purchase_receipts.json 2>/dev/null || true
           git diff --cached --quiet && { echo "لا تغيير"; exit 0; }
           git commit -q -m "🧾 فواتير الاستلام عبر REST [vercel skip]"
