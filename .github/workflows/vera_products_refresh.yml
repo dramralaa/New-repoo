@@ -1,0 +1,53 @@
+# 📚 تحديث ملف أصناف فيرا data/vera_products.json عبر REST (يدوي، قراءة فقط). ≈ 30 طلب، سقف 70، بلا إعادة محاولة، بدون commit عند أي نقص.
+# الأسرار (أسماء): JULEB_API_KEY_VERA, CROSS_REPO_TOKEN. مستقل تمامًا عن دوم.
+name: 📚 فيرا - تحديث ملف الأصناف (REST، يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'ref الكود في juleb-daily-report'
+        default: 'main'
+
+concurrency:
+  group: vera-products-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref || 'main' }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Refresh VERA products (read-only)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_VERA }}
+          JULEB_API_BASE: https://phvera.juleb.com/api/v1
+          PRODUCTS_PATH: data/vera_products.json
+          REQ_CAP: '70'
+        run: |
+          case ",${PLATFORM_PAUSE,,}," in *,juleb,*|*,vera,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          python juleb_products_rest.py
+      - name: Commit (private repo)
+        run: |
+          git diff --quiet data/vera_products.json && { echo "لا تغيير"; exit 0; }
+          for i in 1 2 3 4 5 6 7 8; do
+            rm -rf /tmp/pub
+            git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/pub || { sleep 4; continue; }
+            cp data/vera_products.json /tmp/pub/data/
+            git -C /tmp/pub add data/vera_products.json
+            git -C /tmp/pub diff --cached --quiet && exit 0
+            git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "📚 تحديث أصناف فيرا عبر REST [vercel skip]"
+            git -C /tmp/pub push -q origin HEAD:main && exit 0
+            sleep $((i * 2))
+          done
+          exit 1
