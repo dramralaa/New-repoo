@@ -1,0 +1,79 @@
+# 📡 سحب Branch Stock الآلي لفيرا = المصدر الأساسي لرصيد فيرا (مزامنة المنصات ثم الداشبورد). مستقل تمامًا عن دوم (ملفات وفروع وأسرار منفصلة).
+# الأساسي: سحب كامل مكتمل (حوالي 10 طلبات ويب بمسافة 3 ث) ← data/vera_stock_balance.json. البديل: لا يوجد بديل آلي صالح لفيرا؛ لو فشل السحب أكتر من ساعتين
+# المنصات بتتخطى الدورة (لا نشر من بيانات قديمة) + تنبيه تيليجرام عند أول فشل وعند التعافي. الإكسيل تدقيق فقط.
+# الحِمل: كل 60 دقيقة (≈10 طلبات/ساعة). دخول واحد لكل تشغيل، بلا إعادة محاولة وبلا تبديل حسابات.
+# الأسرار (أسماء فقط): VERA_URL, VERA_DB, JULEB_USER_VERA, JULEB_PASS_VERA, CROSS_REPO_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID.
+name: 📡 فيرا - سحب Branch Stock الآلي
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'ref الكود في juleb-daily-report'
+        default: 'main'
+
+concurrency:
+  group: vera-branch-stock-pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref || 'main' }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Pull Branch Stock (read-only)
+        env:
+          BRAND: VERA
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_WEB_ORIGIN: ${{ secrets.VERA_URL }}
+          JULEB_DB: ${{ secrets.VERA_DB }}
+          JULEB_RO_USER: ${{ secrets.JULEB_USER_VERA }}
+          JULEB_RO_PASS: ${{ secrets.JULEB_PASS_VERA }}
+        run: python juleb_branch_stock_pull.py
+        continue-on-error: true
+      - name: Commit result (private repo)
+        run: |
+          [ -f data/vera_branch_stock_web_status.json ] || exit 0
+          for i in 1 2 3 4 5 6 7 8; do
+            rm -rf /tmp/pub
+            git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/pub || { sleep 4; continue; }
+            cp data/vera_branch_stock_web_status.json /tmp/pub/data/
+            [ -f data/vera_stock_balance_web.json ] && cp data/vera_stock_balance_web.json /tmp/pub/data/
+            grep -q branch_stock_web data/vera_stock_balance.json 2>/dev/null && cp data/vera_stock_balance.json /tmp/pub/data/
+            git -C /tmp/pub add data/vera_branch_stock_web_status.json data/vera_stock_balance_web.json data/vera_stock_balance.json
+            git -C /tmp/pub diff --cached --quiet && exit 0
+            git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "📡 رصيد فيرا Branch Stock الآلي [vercel skip]"
+            git -C /tmp/pub push -q origin HEAD:main && exit 0
+            sleep $((i * 2))
+          done
+          exit 1
+      - name: Telegram (فشل أول مرة / تعافي فقط)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          [ -f data/vera_branch_stock_web_status.json ] && [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          MSG=$(python - <<'PY'
+          import json
+          s = json.load(open("data/vera_branch_stock_web_status.json"))
+          if not s.get("alert"):
+              raise SystemExit
+          if s.get("recovered"):
+              print("✅ سحب رصيد فيرا الآلي رجع يشتغل (آخر نجاح %s)" % s.get("last_ok_at"))
+          else:
+              print("⚠️ سحب رصيد فيرا الآلي فشل: %s - المنصات هتتخطى الدورات لحد ما يتصلح (آخر نجاح %s)" % (s.get("reason"), s.get("last_ok_at")))
+          PY
+          )
+          [ -n "$MSG" ] || exit 0
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=${MSG}"
