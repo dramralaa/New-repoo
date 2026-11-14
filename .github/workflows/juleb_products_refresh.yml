@@ -10,7 +10,7 @@ on:
         default: 'main'
 
 concurrency:
-  group: doom-rest-cache
+  group: juleb-products-refresh   # مجموعة منفصلة: حلقة LIVE ماسكة doom-rest-cache لحد 345 دقيقة فكان التشغيل هيفضل معلّق
   cancel-in-progress: false
 
 jobs:
