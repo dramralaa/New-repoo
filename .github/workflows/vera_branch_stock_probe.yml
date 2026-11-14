@@ -1,0 +1,52 @@
+# 🔎 استكشاف Branch Stock لفيرا (يدوي فقط، قراءة فقط). دخول واحد + سحب كامل واحد (≈15-25 طلب ويب بمسافة 3 ث). ناتجه أرقام فقط في ريبو خاص.
+# الأسرار (أسماء فقط): VERA_URL, VERA_DB, JULEB_USER_VERA, JULEB_PASS_VERA, CROSS_REPO_TOKEN. ملف مستقل تمامًا عن دوم.
+name: 🔎 فيرا - استكشاف Branch Stock (يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'ref الكود في juleb-daily-report'
+        default: 'main'
+
+concurrency:
+  group: vera-branch-stock-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref || 'main' }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe (read-only)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          VERA_WEB_ORIGIN: ${{ secrets.VERA_URL }}
+          VERA_DB: ${{ secrets.VERA_DB }}
+          VERA_RO_USER: ${{ secrets.JULEB_USER_VERA }}
+          VERA_RO_PASS: ${{ secrets.JULEB_PASS_VERA }}
+        run: python vera_branch_stock_probe.py
+        continue-on-error: true
+      - name: Commit result (private repo)
+        run: |
+          [ -f data/vera_branch_stock_probe.json ] || exit 0
+          for i in 1 2 3 4 5 6; do
+            rm -rf /tmp/pub
+            git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/pub || { sleep 4; continue; }
+            cp data/vera_branch_stock_probe.json /tmp/pub/data/
+            git -C /tmp/pub add data/vera_branch_stock_probe.json
+            git -C /tmp/pub diff --cached --quiet && exit 0
+            git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "🔎 استكشاف Branch Stock فيرا [vercel skip]"
+            git -C /tmp/pub push -q origin HEAD:main && exit 0
+            sleep $((i * 2))
+          done
+          exit 1
