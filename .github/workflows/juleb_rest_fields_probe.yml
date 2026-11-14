@@ -1,0 +1,32 @@
+# 🔎 15 نوفمبر 2026 - فحص حقول REST للفواتير (يدوي، قراءة فقط، ≤30 طلب، رموز حالة وأنواع بس في السجل)
+name: 🔎 [DOOM] فحص حقول REST
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: juleb-rest-fields-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: main
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+        run: |
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          python juleb_rest_fields_probe.py
