@@ -1,0 +1,79 @@
+# 📡 سحب Branch Stock الآلي = المصدر الأساسي لرصيد دوم (منصات + داشبورد). الإكسيل تدقيق اختياري فقط.
+# الخطة الأساسية: سحب كامل مكتمل (حوالي 23 طلب ويب بمسافة 3 ث) ← data/stock_balance_web.json في juleb-daily-report.
+# الخطة البديلة: المنطق القديم في stock_snapshot.get_balance (لقطة + دفتر) تلقائيًا لو الملف قديم/غير مكتمل. لو الاثنين غير صالحين المزامنة تتخطى الدورة.
+# الحِمل: وقت البيع (07:00-02:00 رياض) كل 30 دقيقة، وقت الهدوء (02:00-07:00) كل 60 دقيقة ≈ 46 طلب/ساعة كحد أقصى (تقدير، مش حد مسموح).
+# دخول واحد لكل تشغيل، بلا إعادة محاولة وبلا تبديل حسابات. الرفض (401/403/429) = توقف + حالة فشل + تنبيه مرة واحدة، وآخر ملف سليم لا يُمسّ.
+# الأسرار (أسماء فقط): JULEB_URL_DOOM, JULEB_DB_DOOM, JULEB_USER_DOOM, JULEB_PASS_DOOM, CROSS_REPO_TOKEN, TELEGRAM_TOKEN_DOOM, TELEGRAM_CHAT_ID_DOOM.
+name: 📡 سحب Branch Stock الآلي (رصيد دوم)
+
+on:
+  schedule:
+    - cron: '7,37 4-22 * * *'
+    - cron: '7 23,0-3 * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'فرع/ref الكود في juleb-daily-report'
+        default: 'main'
+
+concurrency:
+  group: juleb-branch-stock-pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref || 'main' }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Pull Branch Stock (read-only)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_WEB_ORIGIN: ${{ secrets.JULEB_URL_DOOM }}
+          JULEB_DB: ${{ secrets.JULEB_DB_DOOM }}
+          JULEB_RO_USER: ${{ secrets.JULEB_USER_DOOM }}
+          JULEB_RO_PASS: ${{ secrets.JULEB_PASS_DOOM }}
+        run: python juleb_branch_stock_pull.py
+        continue-on-error: true
+      - name: Commit result (private repo)
+        run: |
+          [ -f data/branch_stock_web_status.json ] || exit 0
+          for i in 1 2 3 4 5 6 7 8; do
+            rm -rf /tmp/pub
+            git clone -q --depth 1 https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git /tmp/pub || { sleep 4; continue; }
+            cp data/branch_stock_web_status.json /tmp/pub/data/
+            [ -f data/stock_balance_web.json ] && cp data/stock_balance_web.json /tmp/pub/data/
+            git -C /tmp/pub add data/branch_stock_web_status.json data/stock_balance_web.json
+            git -C /tmp/pub diff --cached --quiet && exit 0
+            git -C /tmp/pub -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" commit -q -m "📡 رصيد Branch Stock الآلي [vercel skip]"
+            git -C /tmp/pub push -q origin HEAD:main && exit 0
+            sleep $((i * 2))
+          done
+          exit 1
+      - name: Telegram (فشل أول مرة / تعافي فقط)
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+        run: |
+          [ -f data/branch_stock_web_status.json ] && [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          MSG=$(python - <<'PY'
+          import json
+          s = json.load(open("data/branch_stock_web_status.json"))
+          if not s.get("alert"):
+              raise SystemExit
+          if s.get("recovered"):
+              print("✅ سحب رصيد دوم الآلي رجع يشتغل (آخر نجاح %s)" % s.get("last_ok_at"))
+          else:
+              print("⚠️ سحب رصيد دوم الآلي فشل: %s - المزامنة بتستخدم البديل لحد ما يتصلح (آخر نجاح %s)" % (s.get("reason"), s.get("last_ok_at")))
+          PY
+          )
+          [ -n "$MSG" ] || exit 0
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" --data-urlencode "chat_id=${TG_CHAT}" --data-urlencode "text=${MSG}"
