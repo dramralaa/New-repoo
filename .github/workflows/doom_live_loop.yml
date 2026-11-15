@@ -271,6 +271,13 @@ jobs:
             # 15 نوفمبر 2026: قايمة إعادة سحب البنود بتتحفظ بعد ما تتقلّص (عشان إعادة التشغيل ما تعيدش نفس الفواتير)
             for RF in data/rest_store/refresh_lines_doom.json data/rest_store/refresh_lines_vera.json; do [ -f "$RF" ] && FILES+=("$RF" data/rest_store/pos_store.json); done
             push_files "${FILES[@]}" || echo "⚠️ push فشل"
+            # 🟢 15 نوفمبر 2026: لوحة صاحب المشروع (بتنشر من main ومفيهاش توكن GitHub) بتقرا LIVE من data/live/ على main.
+            # كل دورتين (~18 دقيقة) - Contents API (من غير clone)، وبيكتب بس لو الملف اتغيّر.
+            if [ $((CYCLE % 2)) -eq 0 ] && [ -f gh_put_files.py ]; then
+              GH_TOKEN="$VERA_PUSH_TOKEN" timeout 120 python gh_put_files.py main \
+                doom_trial_report/data_cache/live_days.json=data/live/live_days.json \
+                doom_trial_report/data_cache/monthly_forecast.json=data/live/monthly_forecast.json || echo "⚠️ نسخ LIVE لـ main ما تمش"
+            fi
             ELAPSED=$(( $(date +%s) - START ))
             [ $ELAPSED -ge $DURATION ] && break
             H=$((10#$(TZ=Asia/Riyadh date +%H)))
