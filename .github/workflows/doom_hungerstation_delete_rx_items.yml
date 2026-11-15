@@ -12,8 +12,10 @@ jobs:
   delete:
     runs-on: ubuntu-latest
     steps:
-      - name: Mask token in logs
-        run: echo "::add-mask::${{ inputs.hs_token }}"
+      - name: Load token from event file (masked - never printed)
+        run: |
+          T=$(jq -r '.inputs.token // .inputs.hs_token // .client_payload.token // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$T" ]; then echo "::add-mask::$T"; echo "HS_TOKEN=$T" >> "$GITHUB_ENV"; fi
       - name: Checkout juleb-daily-report (branch)
         uses: actions/checkout@v4
         with:
@@ -25,8 +27,6 @@ jobs:
           python-version: '3.10'
       - run: pip install requests
       - name: Delete
-        env:
-          HS_TOKEN: ${{ inputs.hs_token }}
         run: python hungerstation_delete_rx_items.py
       - name: Commit result back
         run: |

@@ -11,6 +11,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Load token from event file (masked - never printed)
+        run: |
+          T=$(jq -r '.inputs.token // .inputs.hs_token // .client_payload.token // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$T" ]; then echo "::add-mask::$T"; echo "HS_TOKEN=$T" >> "$GITHUB_ENV"; fi
       - name: Checkout juleb-daily-report (branch)
         uses: actions/checkout@v4
         with:
@@ -23,7 +27,6 @@ jobs:
       - run: pip install requests
       - name: Test updateProduct mutation on 3 canary SKUs
         env:
-          HS_TOKEN: ${{ github.event.inputs.token }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
         run: python hungerstation_test_update_product_mutation.py

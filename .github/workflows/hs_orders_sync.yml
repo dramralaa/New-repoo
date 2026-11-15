@@ -45,10 +45,9 @@ jobs:
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
           VERA_PASS: ${{ secrets.VERA_PASS }}
-          PUSHED: ${{ toJson(github.event.client_payload.orders) }}
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            printf '%s' "$PUSHED" > /tmp/pushed.json
+            jq '.client_payload.orders' "$GITHUB_EVENT_PATH" > /tmp/pushed.json
             export HS_PUSHED_FILE=/tmp/pushed.json
             python shifty_hs_order_ingest.py /tmp/pushed.json
           fi
