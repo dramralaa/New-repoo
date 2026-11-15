@@ -1,0 +1,77 @@
+name: 🏷️ [HS] عروض هنجرستيشن من السيرفر (discover / validate / status / create)
+
+# الدخول بالجهاز الموثوق (من غير متصفح). discover/validate/status قراءة بس.
+# create محمي في الكود: CONFIRM=CREATE-ONE + صنف واحد + فرع واحد + خصم ≤ 5% + مدة ≤ 24 ساعة. طلب واحد من غير إعادة.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [discover, validate, status, create]
+        default: discover
+      account:
+        type: choice
+        options: [DOOM, VERA]
+        default: DOOM
+      skus:
+        description: 'SKUs مفصولة بفاصلة (validate/create)'
+        default: ''
+      branches:
+        description: 'أرقام الفروع (1..4) مفصولة بفاصلة'
+        default: ''
+      discount:
+        description: 'نسبة الخصم %'
+        default: '5'
+      hours:
+        description: 'مدة العرض بالساعات'
+        default: '24'
+      confirm:
+        description: 'اكتب CREATE-ONE للإنشاء بس'
+        default: ''
+
+concurrency:
+  group: hs-promo-ops
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests cryptography
+      - name: Run
+        env:
+          MODE: ${{ inputs.mode }}
+          ACCOUNT: ${{ inputs.account }}
+          SKUS: ${{ inputs.skus }}
+          BRANCHES: ${{ inputs.branches }}
+          DISCOUNT: ${{ inputs.discount }}
+          HOURS: ${{ inputs.hours }}
+          CONFIRM: ${{ inputs.confirm }}
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
+          VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
+        run: python hs_promo_ops.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/s && cp data/hs_promo_ops_*.json /tmp/s/ 2>/dev/null || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/s/* data/ && git add data/hs_promo_ops_*.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🏷️ عروض هنجر - نتيجة [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
+          exit 1
