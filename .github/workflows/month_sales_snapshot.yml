@@ -43,6 +43,7 @@ jobs:
       - name: سحب وتخزين
         env:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
