@@ -20,7 +20,9 @@ jobs:
           python-version: '3.10'
       - run: pip install pandas xlsxwriter pytz requests
       - name: Build
-        run: python doom_master_build.py
+        env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python silent_run.py doom_master_build.py
       - name: Commit result
         run: |
           git config user.name "github-actions[bot]"

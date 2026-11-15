@@ -25,12 +25,13 @@ jobs:
       - run: pip install pandas openpyxl
       - name: Pull receipt inventory
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
           PICKING_NAME: ${{ github.event.inputs.picking_name }}
-        run: python doom_pull_receipt_inventory.py
+        run: python silent_run.py doom_pull_receipt_inventory.py
       - name: Commit and push result
         run: |
           git config user.name "github-actions[bot]"

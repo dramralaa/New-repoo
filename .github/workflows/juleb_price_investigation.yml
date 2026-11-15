@@ -31,6 +31,7 @@ jobs:
           python-version: '3.10'
       - name: Read-only investigation
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
@@ -38,4 +39,4 @@ jobs:
           INV_CODE: ${{ inputs.code }}
           INV_ORDER: ${{ inputs.order }}
           INV_DATE: ${{ inputs.recv_date }}
-        run: python juleb_price_investigation.py
+        run: python silent_run.py juleb_price_investigation.py

@@ -24,10 +24,11 @@ jobs:
       - run: pip install requests
       - name: Diff
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
-        run: python juleb_commission_probe.py
+        run: python silent_run.py juleb_commission_probe.py
       - name: Commit result
         if: always()
         run: |

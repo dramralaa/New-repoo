@@ -18,7 +18,9 @@ jobs:
           python-version: '3.10'
       - run: pip install requests
       - name: Probe
-        run: python promo_discovery_probe.py
+        env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python silent_run.py promo_discovery_probe.py
       - name: Commit result
         if: always()
         run: |

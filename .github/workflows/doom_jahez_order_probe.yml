@@ -26,11 +26,12 @@ jobs:
           python-version: '3.10'
       - name: Probe
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           ORDER_ID: ${{ inputs.order_id }}
           ITEM_SKU: ${{ inputs.item_sku }}
-        run: python jahez_order_probe.py
+        run: python silent_run.py jahez_order_probe.py
       - name: Commit result
         if: always()
         run: |

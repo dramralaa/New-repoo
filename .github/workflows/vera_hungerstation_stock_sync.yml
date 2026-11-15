@@ -18,6 +18,7 @@ jobs:
       - run: pip install requests
       - name: Sync (dry-run unless VERA_HS_WRITE_ENABLED=1)
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
@@ -25,7 +26,7 @@ jobs:
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
           VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
           VERA_HS_WRITE_ENABLED: ${{ secrets.VERA_HS_WRITE_ENABLED }}
-        run: python vera_hungerstation_stock_sync.py
+        run: python silent_run.py vera_hungerstation_stock_sync.py
       - name: Commit result back
         if: always()
         run: |

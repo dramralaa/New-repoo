@@ -24,11 +24,12 @@ jobs:
       - run: pip install requests
       - name: Apply category decisions (canary + verified batch)
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_TOKEN: ${{ secrets.HS_SESSION_TOKEN }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           PROCEED_WITH_FULL_BATCH: ${{ github.event.inputs.proceed_with_full_batch }}
-        run: python hungerstation_fix_category_from_decisions.py
+        run: python silent_run.py hungerstation_fix_category_from_decisions.py
       - name: Commit result back
         if: always()
         run: |

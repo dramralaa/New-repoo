@@ -24,10 +24,11 @@ jobs:
       - run: pip install requests cryptography pytz
       - name: Discover
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
-        run: python doom_hs_readd_verify.py
+        run: python silent_run.py doom_hs_readd_verify.py
       - name: Commit result
         if: always()
         run: |

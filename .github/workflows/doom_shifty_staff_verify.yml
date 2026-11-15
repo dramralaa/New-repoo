@@ -25,9 +25,10 @@ jobs:
       - run: pip install requests cryptography
       - name: Verify staff purchases against Juleb invoices
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python shifty_staff_verify.py
+        run: python silent_run.py shifty_staff_verify.py

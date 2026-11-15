@@ -77,6 +77,7 @@ jobs:
           PY
       - name: Create products bulk on Hungerstation
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           MAX_BARCODES: ${{ github.event.inputs.limit }}
           ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
@@ -88,7 +89,7 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
           VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
-        run: python hungerstation_create_products_bulk.py
+        run: python silent_run.py hungerstation_create_products_bulk.py
       - name: Commit result
         if: always()
         run: |

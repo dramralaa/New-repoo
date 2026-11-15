@@ -19,6 +19,7 @@ jobs:
       - run: pip install requests
       - name: Discover
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
@@ -29,7 +30,7 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
           VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
-        run: python hs_orders_api_probe.py
+        run: python silent_run.py hs_orders_api_probe.py
       - name: Commit result
         if: always()
         run: |

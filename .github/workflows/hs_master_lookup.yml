@@ -28,13 +28,14 @@ jobs:
       - run: pip install requests cryptography pytz pandas openpyxl
       - name: Discover
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           ITEMS: ${{ inputs.items }}
           ITEMS_FILE: ${{ inputs.items_file }}
-        run: python hs_master_lookup.py
+        run: python silent_run.py hs_master_lookup.py
       - name: Commit result
         if: always()
         run: |

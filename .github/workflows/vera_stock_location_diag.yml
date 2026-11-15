@@ -19,11 +19,12 @@ jobs:
       - run: pip install requests pytz
       - name: Diagnose
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
           VERA_PASS: ${{ secrets.VERA_PASS }}
-        run: python vera_stock_location_diag.py
+        run: python silent_run.py vera_stock_location_diag.py
       - name: Commit result
         if: always()
         run: |

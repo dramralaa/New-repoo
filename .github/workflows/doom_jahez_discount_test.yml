@@ -39,6 +39,7 @@ jobs:
       - run: pip install requests pytz
       - name: Test
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           ACTION: ${{ inputs.action }}
@@ -47,7 +48,7 @@ jobs:
           DEAL_HOURS: ${{ inputs.hours }}
           DISCOUNT_ID: ${{ inputs.discount_id }}
           MAX_QTY: ${{ inputs.max_qty }}
-        run: python doom_jahez_discount_test.py
+        run: python silent_run.py doom_jahez_discount_test.py
       - name: Commit result
         if: always()
         run: |

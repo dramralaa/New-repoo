@@ -19,9 +19,10 @@ jobs:
       - run: pip install requests cryptography pytz
       - name: Discover
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
-        run: python doom_hs_create_fail_probe.py
+        run: python silent_run.py doom_hs_create_fail_probe.py
       - name: Commit result
         if: always()
         run: |

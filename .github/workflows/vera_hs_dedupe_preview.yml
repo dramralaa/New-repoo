@@ -19,13 +19,14 @@ jobs:
       - run: pip install requests pytz
       - name: Diagnose
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
           VERA_PASS: ${{ secrets.VERA_PASS }}
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
           VERA_HUNGERSTATION_CLIENT_SECRET: ${{ secrets.VERA_HUNGERSTATION_CLIENT_SECRET }}
-        run: python vera_hs_dedupe_preview.py
+        run: python silent_run.py vera_hs_dedupe_preview.py
       - name: Commit result
         if: always()
         run: |

@@ -27,11 +27,12 @@ jobs:
       - run: pip install requests pytz
       - name: Snapshot offers
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
-        run: python jahez_offers_history.py
+        run: python silent_run.py jahez_offers_history.py
       - name: Commit and push result
         run: |
           git config user.name "github-actions[bot]"

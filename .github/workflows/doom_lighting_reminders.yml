@@ -21,8 +21,9 @@ jobs:
       - run: pip install requests pytz
       - name: Run Lighting Reminders
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GITHUB_REPOSITORY: dramralaa/juleb-daily-report
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python pharmacist_lighting_reminders.py
+        run: python silent_run.py pharmacist_lighting_reminders.py

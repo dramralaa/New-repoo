@@ -17,8 +17,9 @@ jobs:
           python-version: '3.10'
       - name: Create ceiling pricelist
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python juleb_create_hungerstation_ceiling_pricelist.py
+        run: python silent_run.py juleb_create_hungerstation_ceiling_pricelist.py

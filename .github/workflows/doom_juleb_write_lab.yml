@@ -28,13 +28,14 @@ jobs:
       - run: pip install requests pytz
       - name: Run
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
           MODE: ${{ inputs.mode }}
           ARGS: ${{ inputs.args }}
-        run: python juleb_write_lab.py
+        run: python silent_run.py juleb_write_lab.py
       - name: Commit result
         if: always()
         run: |

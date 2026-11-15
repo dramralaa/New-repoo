@@ -41,6 +41,7 @@ jobs:
       - run: pip install requests
       - name: Full push
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
@@ -50,7 +51,7 @@ jobs:
           FULL_PUSH: '1'
           ONLY_BRANCH: ${{ github.event.inputs.branch }}
           PUSH_UNLINKED_INACTIVE: ${{ github.event.inputs.push_unlinked_inactive }}
-        run: python hungerstation_stock_sync.py
+        run: python silent_run.py hungerstation_stock_sync.py
       - name: Commit result
         if: always()
         run: |

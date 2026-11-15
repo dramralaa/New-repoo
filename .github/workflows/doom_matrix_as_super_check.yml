@@ -19,8 +19,9 @@ jobs:
       - run: pip install pytz
       - name: Check
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python doom_matrix_as_super_check.py
+        run: python silent_run.py doom_matrix_as_super_check.py

@@ -38,6 +38,7 @@ jobs:
       - run: pip install requests openpyxl pandas pytz
       - name: Preview
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           DEAL_REFRESH: "1"
@@ -47,7 +48,7 @@ jobs:
           DEAL_START: ${{ inputs.start }}
           DEAL_END: ${{ inputs.end }}
           DEAL_MIN_MARGIN: ${{ inputs.min_margin }}
-        run: python doom_jahez_deals_preview.py
+        run: python silent_run.py doom_jahez_deals_preview.py
       - name: Commit result
         if: always()
         run: |

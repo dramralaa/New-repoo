@@ -26,10 +26,11 @@ jobs:
       - run: pip install requests pytz
       - name: Fix Arabic names
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
           ROLLBACK: ${{ github.event.inputs.rollback }}
-        run: python vera_jahez_arabic_names.py
+        run: python silent_run.py vera_jahez_arabic_names.py
       - name: Commit and push result
         if: always()
         run: |

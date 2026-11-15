@@ -18,6 +18,7 @@ jobs:
       - run: pip install requests pytz
       - name: Run Critical Alerts - DOOM
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
           TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
           JULEB_URL_DOOM: ${{ secrets.JULEB_URL_DOOM }}
@@ -26,4 +27,4 @@ jobs:
           JULEB_PASS_DOOM: ${{ secrets.JULEB_PASS_DOOM }}
           GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GITHUB_REPOSITORY: dramralaa/juleb-daily-report
-        run: python critical_alerts_engine.py DOOM
+        run: python silent_run.py critical_alerts_engine.py DOOM
