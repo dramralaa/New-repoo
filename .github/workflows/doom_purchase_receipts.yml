@@ -46,12 +46,26 @@ jobs:
           case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
           RECEIPTS_OUT="$GITHUB_WORKSPACE/doom_trial_report/data_cache/purchase_receipts.json" \
           REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/pos_store.json" python _src/juleb_purchase_receipts_rest.py
+      # 🧾 15 نوفمبر 2026: فيرا بنفس السكربت (RECEIPTS_BRAND=vera) - الملف بيتنشر مع مخزن فيرا (live-store) من الحلقة
+      - name: Pull receipts (VERA)
+        if: always()
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_VERA }}
+          JULEB_API_BASE: https://phvera.juleb.com/api/v1
+          REQ_CAP: ${{ inputs.req_cap || '60' }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح فيرا غير موجود"; exit 0; }
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          RECEIPTS_BRAND=vera RECEIPTS_OUT="$GITHUB_WORKSPACE/data/rest_store/vera_purchase_receipts.json" \
+          RECEIPTS_STATUS="$GITHUB_WORKSPACE/data/health/vera_purchase_receipts.json" \
+          REST_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" python _src/juleb_purchase_receipts_rest.py || echo "⚠️ استلامات فيرا ما تمتش"
       - name: Commit
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add doom_trial_report/data_cache/purchase_receipts.json data/health/purchase_receipts.json 2>/dev/null || true
+          git add doom_trial_report/data_cache/purchase_receipts.json data/health/purchase_receipts.json data/rest_store/vera_purchase_receipts.json data/health/vera_purchase_receipts.json 2>/dev/null || true
           git diff --cached --quiet && { echo "لا تغيير"; exit 0; }
           git commit -q -m "🧾 فواتير الاستلام عبر REST [vercel skip]"
           for i in 1 2 3 4 5; do
