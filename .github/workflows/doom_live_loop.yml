@@ -129,6 +129,14 @@ jobs:
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_shifty_incentives_push.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
               echo "🏅 تشغيل حوافز شيفتي: HTTP $CODE"
             fi
+            # 🕒 15 نوفمبر 2026: حوافز شيفتي اللحظية كل ساعة (9ص - 1ص الرياض) من مخزن LIVE - صفر طلبات لجوليب
+            LASTF=/tmp/last_shifty_inc_intraday; HRI=$((10#$(TZ=Asia/Riyadh date +%H)))
+            if { [ $HRI -ge 9 ] || [ $HRI -lt 1 ]; } && [ $((NOWTS - $(cat "$LASTF" 2>/dev/null || echo 0))) -ge 3600 ]; then
+              echo "$NOWTS" > "$LASTF"
+              CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/doom_shifty_incentives_push.yml/dispatches" -d '{"ref":"main","inputs":{"intraday":"1"}}' 2>/dev/null || echo 000)
+              echo "🕒 حوافز شيفتي اللحظية: HTTP $CODE"
+            fi
             # 🕘 15 نوفمبر 2026 (قرار صاحب المشروع): مواعيد/حالة الفروع على المنصات → شيفتي في مواعيد ثابتة بس (تنبيه أول وآخر اليوم):
             # جاهز 01:30 و03:00 و04:00 و06:00 و07:00 و08:00 الرياض، وهنجرستيشن (دخول البوابة) مرتين بس 01:30 و08:00
             # (هنجر وقّفناها 30 أكتوبر بعد تحذيرهم من كثرة الطلبات - مرتين في اليوم = دخول واحد + قراءة لكل فرع، أقل بكتير من أي حد).
