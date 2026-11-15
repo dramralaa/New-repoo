@@ -12,6 +12,19 @@ jobs:
         with:
           repository: dramralaa/vera-repo
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Checkout VERA store (live-store - data only, no Juleb calls)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          ref: live-store
+          path: _store
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Checkout store shim (vera-orig)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-orig
+          path: _vo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -28,4 +41,4 @@ jobs:
           VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
           VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
           REPORT_TYPE: "DAILY"
-        run: python pharmacy_engine_p01.py
+        run: python vera_store_boot.py pharmacy_engine_p01.py
