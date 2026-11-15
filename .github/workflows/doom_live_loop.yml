@@ -90,6 +90,7 @@ jobs:
             local VR=/tmp/vera-store URL="https://x-access-token:${VERA_PUSH_TOKEN}@github.com/dramralaa/vera-repo.git"
             [ -n "$VERA_PUSH_TOKEN" ] && [ -f data/rest_store/vera_pos_store.json ] && [ -f data/rest_store/vera_dash_pack.json ] || return 1
             rm -rf $VR && mkdir -p $VR/data && cp data/rest_store/vera_pos_store.json $VR/data/vera_pos_store.json && cp data/rest_store/vera_dash_pack.json $VR/data/vera_dash_pack.json
+            [ -f data/rest_store/vera_purchase_receipts.json ] && cp data/rest_store/vera_purchase_receipts.json $VR/data/vera_purchase_receipts.json
             (
               cd $VR || exit 1
               git init -q -b live-store
