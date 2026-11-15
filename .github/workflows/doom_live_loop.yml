@@ -231,7 +231,7 @@ jobs:
             if [ -n "$JULEB_API_KEY_VERA" ] && [ ${VFAILS:-0} -lt 3 ]; then
               if JULEB_API_KEY="$JULEB_API_KEY_VERA" JULEB_API_BASE=https://phvera.juleb.com/api/v1 PROBE_BRAND=vera \
                  STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" REQ_CAP=40 STATIC_TTL=3600 \
-                 STORE_BACKFILL_FROM='2026-10-31 21:00:00' python juleb_rest_store.py; then VFAILS=0; else VFAILS=$((${VFAILS:-0} + 1)); echo "⚠️ سحب فيرا فشل (${VFAILS})"; fi
+                 STORE_BACKFILL_FROM='2026-09-30 21:00:00' python juleb_rest_store.py; then VFAILS=0; else VFAILS=$((${VFAILS:-0} + 1)); echo "⚠️ سحب فيرا فشل (${VFAILS})"; fi
               VERA_STORE_PATH="$GITHUB_WORKSPACE/data/rest_store/vera_pos_store.json" VERA_LIVE_OUT="$GITHUB_WORKSPACE/data/rest_store/vera_live_days.json" \
                 python vera_live_refresh.py || echo "⚠️ تحديث LIVE فيرا ما تمش"
               FILES+=(data/rest_store/vera_live_days.json)
