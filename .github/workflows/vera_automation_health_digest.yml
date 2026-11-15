@@ -22,6 +22,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GITHUB_REPOSITORY: dramralaa/vera-repo
+          DIGEST_REPO: dramralaa/New-repoo
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           VERA1_CHAT_ID: ${{ secrets.VERA1_CHAT_ID }}
           VERA_FRIEND_CHAT_ID: ${{ secrets.VERA_FRIEND_CHAT_ID }}
