@@ -21,9 +21,10 @@ jobs:
       - run: pip install requests
       - name: Hide item
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
-        run: python jahez_emergency_hide_batch.py
+        run: python silent_run.py jahez_emergency_hide_batch.py
       - name: Commit and push result
         if: always()
         run: |

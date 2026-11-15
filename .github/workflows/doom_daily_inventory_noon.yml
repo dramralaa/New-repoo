@@ -20,6 +20,7 @@ jobs:
       - run: pip install requests pytz
       - name: Run Inventory Report - DOOM
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python daily_inventory_report_engine.py DOOM
+        run: python silent_run.py daily_inventory_report_engine.py DOOM

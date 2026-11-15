@@ -19,9 +19,10 @@ jobs:
       - run: pip install requests pytz
       - name: Fix SKU name (no names/secrets printed)
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
-        run: python platform_name_fix.py
+        run: python silent_run.py platform_name_fix.py

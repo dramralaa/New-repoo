@@ -23,12 +23,13 @@ jobs:
       - run: pip install requests pytz
       - name: Run audit
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           AUDIT_BRAND: DOOM
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
-        run: python vera_platform_catalog_audit.py
+        run: python silent_run.py vera_platform_catalog_audit.py
       - name: Commit and push result
         if: always()
         run: |

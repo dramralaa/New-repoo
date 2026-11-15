@@ -23,10 +23,11 @@ jobs:
           python-version: '3.10'
       - name: Probe
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
           QUERY: ${{ inputs.query }}
-        run: python vera_jahez_item_probe.py
+        run: python silent_run.py vera_jahez_item_probe.py
       - name: Commit result
         if: always()
         run: |

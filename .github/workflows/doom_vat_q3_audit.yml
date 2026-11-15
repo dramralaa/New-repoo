@@ -18,11 +18,12 @@ jobs:
           python-version: '3.10'
       - name: Audit
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python doom_vat_q3_audit.py
+        run: python silent_run.py doom_vat_q3_audit.py
       - name: Commit result
         if: always()
         run: |

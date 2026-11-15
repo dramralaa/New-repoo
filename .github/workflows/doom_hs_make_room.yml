@@ -36,12 +36,13 @@ jobs:
       - run: pip install requests cryptography
       - name: Make room
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           MODE: ${{ github.event.inputs.mode }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
           LIMIT: ${{ github.event.inputs.limit }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
-        run: python doom_hs_make_room.py
+        run: python silent_run.py doom_hs_make_room.py
       - name: Commit result
         if: always()
         run: |

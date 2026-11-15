@@ -59,6 +59,7 @@ jobs:
           PY
       - name: Harvest images by barcode
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
           HS_BRAND: ${{ github.event.inputs.brand }}
           GITHUB_IMAGES_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
@@ -66,7 +67,7 @@ jobs:
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
           VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
-        run: python hungerstation_harvest_images_by_barcode.py
+        run: python silent_run.py hungerstation_harvest_images_by_barcode.py
       - name: Commit and push result log
         if: always()
         run: |

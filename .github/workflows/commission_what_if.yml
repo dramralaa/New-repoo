@@ -33,12 +33,13 @@ jobs:
       - run: pip install openpyxl pytz requests pandas
       - name: تقييم
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python commission_what_if.py
+        run: python silent_run.py commission_what_if.py
       - name: Commit
         if: always()
         run: |

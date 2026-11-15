@@ -43,14 +43,17 @@ jobs:
       - name: قراءة فئات جوليب (read-only، مرة واحدة)
         if: github.event.inputs.skip_juleb_read != '1'
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python doom_juleb_categories_read.py
+        run: python silent_run.py doom_juleb_categories_read.py
       - name: بناء ملفات المهمة
         if: github.event.inputs.skip_export != '1'
-        run: python doom_master_task_export.py
+        env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python silent_run.py doom_master_task_export.py
       - name: Commit result
         run: |
           git config user.name "github-actions[bot]"

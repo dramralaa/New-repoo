@@ -20,11 +20,12 @@ jobs:
       - run: pip install pytz
       - name: Export Dashboard Data
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python dashboard_data_export.py
+        run: python silent_run.py dashboard_data_export.py
       - name: Commit & Push
         run: |
           git config user.name "Juleb Bot"

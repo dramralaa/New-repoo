@@ -31,12 +31,13 @@ jobs:
       - run: pip install requests
       - name: Diff
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
           REQUESTS: ${{ github.event.inputs.requests }}
           BRAND: ${{ github.event.inputs.brand }}
           KEY_DOOM: ${{ secrets.JULEB_API_KEY_DOOM }}
           KEY_VERA: ${{ secrets.JULEB_API_KEY_VERA }}
-        run: python juleb_get_probe.py
+        run: python silent_run.py juleb_get_probe.py
       - name: Commit result
         if: always()
         run: |

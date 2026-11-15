@@ -61,12 +61,13 @@ jobs:
           PY
       - name: Run
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
           MODE: ${{ github.event.inputs.mode }}
           LIMIT: ${{ github.event.inputs.limit }}
           AUDIT_BRAND: DOOM
           GITHUB_IMAGES_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
-        run: python doom_hs_catalog_fix.py
+        run: python silent_run.py doom_hs_catalog_fix.py
       - name: Commit result
         if: always()
         run: |

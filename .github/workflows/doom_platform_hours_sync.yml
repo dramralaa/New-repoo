@@ -34,13 +34,14 @@ jobs:
       - run: pip install requests cryptography
       - name: Sync
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
           JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
           ENROLL_CODE: ${{ github.event.inputs.enroll_code }}
           SKIP_HS_HOURS: ${{ github.event.inputs.hs == '1' && '0' || '1' }}
-        run: python doom_platform_hours_sync.py
+        run: python silent_run.py doom_platform_hours_sync.py
       - name: Commit result
         if: always()
         run: |

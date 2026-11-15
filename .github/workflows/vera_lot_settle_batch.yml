@@ -32,6 +32,7 @@ jobs:
       - run: pip install requests pytz
       - name: Settle
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
@@ -39,7 +40,7 @@ jobs:
           MODE: ${{ inputs.mode }}
           CHUNK: ${{ inputs.chunk }}
           BRANCH: ${{ inputs.branch }}
-        run: python vera_lot_settle_batch.py
+        run: python silent_run.py vera_lot_settle_batch.py
       - name: Commit result
         if: always()
         run: |

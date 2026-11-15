@@ -35,6 +35,7 @@ jobs:
       - run: pip install requests cryptography pytz
       - name: Push incentives to Shifty
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           JULEB_URL: ${{ secrets.JULEB_URL }}
           JULEB_DB: ${{ secrets.JULEB_DB }}
           JULEB_USER: ${{ secrets.JULEB_USER }}
@@ -43,4 +44,4 @@ jobs:
           TARGETS_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           # التشغيل اليدوي بيتجاوز حارس "محدّث لحد أمس" (بعد تغيير تارجت أو أرقام)؛ الجدولة تفضل بالحارس
           INCENTIVES_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
-        run: python shifty_incentives_push.py
+        run: python silent_run.py shifty_incentives_push.py

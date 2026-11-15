@@ -21,11 +21,12 @@ jobs:
       - run: pip install pytz requests
       - name: Sync with unlimited close
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_JAHEZ_TOKEN: ${{ secrets.VERA_JAHEZ_TOKEN }}
           VERA_JAHEZ_STORE_ID: ${{ secrets.VERA_JAHEZ_STORE_ID }}
           VERA_JAHEZ_WRITE_ENABLED: ${{ secrets.VERA_JAHEZ_WRITE_ENABLED }}
           VERA_CLOSE_UNLINKED_MAX: "1300"  # حماية المزامنة بتوقف عند 1500 تعديل في الدورة
-        run: python vera_jahez_sync.py
+        run: python silent_run.py vera_jahez_sync.py
       - name: Commit result
         if: always()
         run: |

@@ -19,11 +19,12 @@ jobs:
       - run: pip install pytz
       - name: Discover
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           VERA_URL: ${{ secrets.VERA_URL }}
           VERA_DB: ${{ secrets.VERA_DB }}
           VERA_USER: ${{ secrets.VERA_USER }}
           VERA_PASS: ${{ secrets.VERA_PASS }}
-        run: python vera_karim_check.py
+        run: python silent_run.py vera_karim_check.py
       - name: Commit result
         if: always()
         run: |

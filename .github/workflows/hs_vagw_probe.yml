@@ -24,12 +24,13 @@ jobs:
       - run: pip install requests cryptography
       - name: Probe
         env:
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           ACCOUNT: ${{ inputs.account }}
           HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
           HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
           VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
           VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
-        run: python hs_vagw_probe.py
+        run: python silent_run.py hs_vagw_probe.py
       - name: Commit result
         if: always()
         run: |
