@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       token:
-        description: 'Live Bearer token from partner-app.hungerstation.com (short-lived, not stored)'
-        required: true
+        description: 'Optional - leave empty: the server logs in by itself (trusted device)'
+        required: false
       vendor_id:
         description: 'HungerStation platformVendorId'
         required: true
@@ -38,6 +38,27 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install requests pytz
+      - name: Server portal session (no browser token needed)
+        if: env.HS_TOKEN == ''
+        env:
+          HS_PORTAL_USER: ${{ secrets.HS_PORTAL_USER }}
+          HS_PORTAL_PASS: ${{ secrets.HS_PORTAL_PASS }}
+          VERA_HS_PORTAL_USER: ${{ secrets.VERA_HS_PORTAL_USER }}
+          VERA_HS_PORTAL_PASS: ${{ secrets.VERA_HS_PORTAL_PASS }}
+          HS_ACCOUNT: DOOM
+        run: |
+          pip install -q cryptography
+          python - <<'PY'
+          import os, hs_portal_session as s
+          t = s.session(os.environ["HS_ACCOUNT"])
+          if not t:
+              raise SystemExit("server login to the HS portal failed - run hs_portal_bootstrap (check)")
+          a = t["access_token"]
+          print("::add-mask::" + a)
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write("HS_TOKEN=" + a + "\n")
+          print("server session ok")
+          PY
       - name: Run
         env:
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
