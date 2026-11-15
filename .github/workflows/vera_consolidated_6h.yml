@@ -26,6 +26,19 @@ jobs:
         with:
           repository: dramralaa/vera-repo
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Checkout VERA store (live-store - data only, no Juleb calls)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-repo
+          ref: live-store
+          path: _store
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      - name: Checkout store shim (vera-orig)
+        uses: actions/checkout@v4
+        with:
+          repository: dramralaa/vera-orig
+          path: _vo
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -34,26 +47,26 @@ jobs:
         run: pip install pandas requests pytz edge-tts matplotlib openpyxl xlsxwriter
 
       - name: Run Periodic Report P01
-        run: python pharmacy_engine_p01.py
+        run: python vera_store_boot.py pharmacy_engine_p01.py
 
       - name: Run Strategic Audit P02
         if: always()
-        run: python pharmacy_engine_p02.py
+        run: python vera_store_boot.py pharmacy_engine_p02.py
 
       - name: Run Daily Closing Report (نفس سكريبت P01 بوضع REPORT_TYPE=DAILY)
         if: always() && github.event.schedule == '0 21 * * *'
         env:
           REPORT_TYPE: "DAILY"
-        run: python pharmacy_engine_p01.py
+        run: python vera_store_boot.py pharmacy_engine_p01.py
 
       - name: Run Support Engine Script - VERA
         if: always()
-        run: python support_engine_2.py VERA
+        run: python vera_store_boot.py support_engine_2.py VERA
 
       - name: Run Test Lab Script - VERA
         if: always()
-        run: python test_lab.py VERA
+        run: python vera_store_boot.py test_lab.py VERA
 
       - name: Run Inventory Report - VERA
         if: always()
-        run: python daily_inventory_report_engine.py VERA
+        run: python vera_store_boot.py daily_inventory_report_engine.py VERA
