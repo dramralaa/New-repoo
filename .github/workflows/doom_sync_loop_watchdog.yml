@@ -1,4 +1,6 @@
-name: 🔁 [DOOM] Sync Loop - Watchdog (مراقبة تأخير المنصات)
+# 🛡️ 16 نوفمبر 2026: بقى المراقب الشامل (system_watchdog.py): 13 بند (LIVE/الأرصدة/المنصات/الاستلامات/الأصناف/الأسعار) -
+# المتأخر بيتعاد تشغيله مرة واحدة، ولو ما رجعش تنبيه تيليجرام. + المطابقة اليومية (10 ص الرياض). مستقل عن doom_live_loop.
+name: 🛡️ [DOOM+VERA] المراقب الشامل (إعادة تشغيل + تنبيه + مطابقة يومية)
 
 on:
   workflow_dispatch:
@@ -28,6 +30,9 @@ jobs:
         env:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
           TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          DISPATCH_REPO: ${{ github.repository }}
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -38,19 +43,19 @@ jobs:
           ITER=0
 
           commit_and_push() {
-            git add data/sync_delay_alert_state.json 2>/dev/null || true
+            git add data/health/watchdog.json data/health/reconcile.json 2>/dev/null || true
             if git diff --cached --quiet; then
               return 0
             fi
-            git commit -m "🔍 مراقبة التأخير - دورة #$ITER ($(date -u +%H:%M) UTC) [vercel skip]"
+            git commit -m "🛡️ المراقب الشامل - تغيّر حالة ($(date -u +%H:%M) UTC) [vercel skip]"
             for i in 1 2 3 4 5; do
               if timeout 60 git push; then
                 return 0
               fi
               timeout 60 git fetch origin main
               if ! git rebase origin/main; then
-                git checkout --theirs data/sync_delay_alert_state.json 2>/dev/null || true
-                git add data/sync_delay_alert_state.json
+                git checkout --theirs data/health/watchdog.json data/health/reconcile.json 2>/dev/null || true
+                git add data/health/watchdog.json data/health/reconcile.json 2>/dev/null || true
                 git rebase --continue || git rebase --abort
               fi
               sleep $((i * 3))
@@ -62,7 +67,9 @@ jobs:
             ITER=$((ITER + 1))
             echo "════════ مراقبة - دورة رقم $ITER - $(date -u '+%Y-%m-%d %H:%M:%S') UTC ════════"
 
-            python sync_delay_watchdog.py || true
+            # آخر نسخة من السكربت وملف الحالة قبل كل دورة (الحلقة بتعيش 5.5 ساعة)
+            timeout 120 git pull -q --rebase origin main || git rebase --abort || true
+            python system_watchdog.py || true
             commit_and_push
 
             NOW=$(date +%s)

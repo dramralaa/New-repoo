@@ -1,3 +1,5 @@
+# ⏸️ 16 نوفمبر 2026 (مراجعة المشروع): الجدولة اتشالت - بيعتمد على XML-RPC المقفول من 2 نوفمبر وبيفشل 3 مرات يوميًا.
+# الكاشات بتتبني من مخزن الـAPI جوه doom_live_loop. التشغيل اليدوي لسه متاح.
 name: 📊 [DOOM] كاش يومي مضمون - تقارير دوم التجريبية الثقيلة
 
 on:
@@ -7,10 +9,6 @@ on:
         description: 'إعادة بناء الكاش حتى لو اتبنى النهاردة'
         type: boolean
         default: false
-  schedule:
-    - cron: '5 21 * * *'
-    - cron: '20 21 * * *'
-    - cron: '45 21 * * *'
 
 concurrency:
   group: doom-daily-cache-guaranteed
