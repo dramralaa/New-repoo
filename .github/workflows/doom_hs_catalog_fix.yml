@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      - name: Load token from event file (masked - never printed)
+        run: |
+          T=$(jq -r '.inputs.token // .inputs.hs_token // .client_payload.token // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$T" ]; then echo "::add-mask::$T"; echo "HS_TOKEN=$T" >> "$GITHUB_ENV"; fi
       - name: Checkout juleb-daily-report
         uses: actions/checkout@v4
         with:
@@ -36,7 +40,6 @@ jobs:
       - run: pip install requests pytz
       - name: Run
         env:
-          HS_TOKEN: ${{ github.event.inputs.token }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
           MODE: ${{ github.event.inputs.mode }}
           LIMIT: ${{ github.event.inputs.limit }}

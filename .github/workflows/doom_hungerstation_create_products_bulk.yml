@@ -40,6 +40,10 @@ jobs:
   create:
     runs-on: ubuntu-latest
     steps:
+      - name: Load token from event file (masked - never printed)
+        run: |
+          T=$(jq -r '.inputs.token // .inputs.hs_token // .client_payload.token // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$T" ]; then echo "::add-mask::$T"; echo "HS_TOKEN=$T" >> "$GITHUB_ENV"; fi
       - name: Checkout juleb-daily-report
         uses: actions/checkout@v4
         with:
@@ -52,7 +56,6 @@ jobs:
       - run: pip install requests cryptography
       - name: Create products bulk on Hungerstation
         env:
-          HS_TOKEN: ${{ github.event.inputs.token }}
           MAX_BARCODES: ${{ github.event.inputs.limit }}
           ACTIVE_DEFAULT: ${{ github.event.inputs.active_default }}
           HS_VENDOR_ID: ${{ github.event.inputs.vendor_id }}
