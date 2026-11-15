@@ -21,22 +21,6 @@ jobs:
           repository: dramralaa/juleb-daily-report
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           ref: main
-      - name: DOOM store (API, deploy branch - read only)
-        uses: actions/checkout@v4
-        with:
-          repository: dramralaa/juleb-daily-report
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
-          ref: claude/assortment-webhook-discovery-a4mxc6
-          path: _dstore
-          sparse-checkout: data/rest_store/pos_store.json
-          sparse-checkout-cone-mode: false
-      - name: VERA store (API, vera-repo live-store - read only)
-        uses: actions/checkout@v4
-        with:
-          repository: dramralaa/vera-repo
-          token: ${{ secrets.CROSS_REPO_TOKEN }}
-          ref: live-store
-          path: _vstore
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -45,8 +29,7 @@ jobs:
         env:
           HS_ORDERS_SOURCE: file
           HS_JULEB_MIN_GAP_MIN: '0'
-          HS_STORE_JULEB: _dstore/data/rest_store/pos_store.json
-          HS_STORE_VERA: _vstore/data/vera_pos_store.json
+          STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           HUNGERSTATION_CLIENT_ID: ${{ secrets.HUNGERSTATION_CLIENT_ID }}
           HUNGERSTATION_CLIENT_SECRET: ${{ secrets.HUNGERSTATION_CLIENT_SECRET }}
           VERA_HUNGERSTATION_CLIENT_ID: ${{ secrets.VERA_HUNGERSTATION_CLIENT_ID }}
