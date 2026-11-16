@@ -15,6 +15,10 @@ on:
         description: 'أكواد جوليب بفاصلة (اختياري) - يرفع دول بس'
         required: false
         default: ''
+      auto_ar:
+        description: '1 = استخدام الأسماء العربي الآلية للأصناف اللي ملهاش اسم من المورد'
+        required: false
+        default: ''
 
 jobs:
   upload:
@@ -45,6 +49,7 @@ jobs:
           SKIP_MEDICINE: ${{ github.event.inputs.skip_medicine || '1' }}
           MAX_ITEMS: ${{ github.event.inputs.max_items || '1' }}
           ONLY_SKUS: ${{ github.event.inputs.only_skus }}
+          AUTO_AR: ${{ github.event.inputs.auto_ar }}
         run: |
           git config user.name "3PI Automation"
           git config user.email "automation@3pi.local"
