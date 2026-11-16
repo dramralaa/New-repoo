@@ -25,7 +25,7 @@ jobs:
       - name: Daily rows from store
         env:
           MODE: ${{ inputs.mode }}
-          STORE_GH_TOKEN: ${{ secrets.STORE_GH_TOKEN }}
+          STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python dashboard_daily_from_store.py
       - name: Commit & Push
         run: |
