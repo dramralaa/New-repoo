@@ -1,8 +1,12 @@
 name: 📊 [DOOM] Dashboard Data Sync
 
-# 15 نوفمبر 2026: الجدولة اتشالت - السكربت XML-RPC (مقفول من جوليب) ومفيش ولا تشغيلة ناجحة. يدوي بس لحد ما يتحوّل للمخزن.
+# 16 نوفمبر 2026: اتحوّل للمخزن (dashboard_daily_from_store.py، صفر طلبات لجوليب). يدوي لحد ما أرقامه تتأكد، بعدها نرجّع الجدولة.
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'plan = يطبع بس | apply = يحدّث docs/dashboard_data.json'
+        default: 'plan'
 
 jobs:
   sync:
@@ -17,14 +21,12 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install pytz
-      - name: Export Dashboard Data
+      - run: pip install requests
+      - name: Daily rows from store
         env:
-          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
-          JULEB_URL: ${{ secrets.JULEB_URL }}
-          JULEB_DB: ${{ secrets.JULEB_DB }}
-          JULEB_USER: ${{ secrets.JULEB_USER }}
-          JULEB_PASS: ${{ secrets.JULEB_PASS }}
-        run: python silent_run.py dashboard_data_export.py
+          MODE: ${{ inputs.mode }}
+          STORE_GH_TOKEN: ${{ secrets.STORE_GH_TOKEN }}
+        run: python dashboard_daily_from_store.py
       - name: Commit & Push
         run: |
           git config user.name "Juleb Bot"
