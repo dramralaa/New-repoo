@@ -32,27 +32,31 @@ jobs:
           ITER=0
 
           sync_with_main() {
-            timeout 60 git fetch origin main
-            if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات منصة MPC)"; then
-              echo "⚠️ تعارض دمج - إعادة المحاولة مع اعتماد نسخة main للملفات المتعارضة"
-              git merge --abort || true
-              if ! git merge -X theirs origin/main --no-edit -m "🔄 استعادة تطابق منصة MPC مع main"; then
-                echo "::error::فشل دمج main في فرع MPC حتى بعد حل التعارض"
-                git merge --abort || true
-                return 1
-              fi
-            fi
+            # 18 نوفمبر 2026: كل محاولة تبدأ نضيفة (إلغاء أي دمج معلّق + reset لآخر الفرع) - قبل كده فشل push بيسيب دمج متعارض معلّق
+            # (git merge origin/branch || true) فكل الدورات الجاية بتفشل في صمت وداشبورد MPC بيفضل على بيانات قديمة (وقف 3.6 ساعة)
             for i in 1 2 3; do
+              git merge --abort 2>/dev/null || true
+              timeout 60 git fetch origin main claude/assortment-webhook-discovery-a4mxc6 || { sleep $((i * 3)); continue; }
+              git reset -q --hard origin/claude/assortment-webhook-discovery-a4mxc6
+              if ! git merge origin/main --no-edit -m "🔄 دمج main تلقائي (تحديث بيانات منصة MPC)"; then
+                echo "⚠️ تعارض دمج - اعتماد نسخة main للملفات المتعارضة"
+                git merge --abort || true
+                if ! git merge -X theirs origin/main --no-edit -m "🔄 استعادة تطابق منصة MPC مع main"; then
+                  echo "::error::فشل دمج main في فرع MPC حتى بعد حل التعارض"
+                  git merge --abort || true
+                  sleep $((i * 3))
+                  continue
+                fi
+              fi
               if timeout 60 git push origin claude/assortment-webhook-discovery-a4mxc6; then
                 echo "✅ دمج main نجح ودُفع بنجاح (محاولة $i)"
                 return 0
               fi
-              echo "⚠️ فشل push دمج main (محاولة $i) - إعادة محاولة"
-              timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
-              git merge origin/claude/assortment-webhook-discovery-a4mxc6 --no-edit || true
+              echo "⚠️ فشل push دمج main (محاولة $i) - إعادة من الأول على آخر نسخة"
               sleep $((i * 3))
             done
-            echo "::error::فشل push دمج main نهائيًا بعد 3 محاولات - هنحاول تاني الدورة الجاية"
+            echo "::error::فشل دمج/push main نهائيًا بعد 3 محاولات - هنحاول تاني الدورة الجاية"
+            return 1
           }
 
           while true; do
