@@ -1,7 +1,10 @@
 name: 📊 [DOOM] Dashboard Data Sync
 
-# 16 نوفمبر 2026: اتحوّل للمخزن (dashboard_daily_from_store.py، صفر طلبات لجوليب). يدوي لحد ما أرقامه تتأكد، بعدها نرجّع الجدولة.
+# 16 نوفمبر 2026: اتحوّل للمخزن (dashboard_daily_from_store.py، صفر طلبات لجوليب).
+# 18 نوفمبر 2026: رجّعنا الجدولة كل ساعة (شكوى مديري دوم: مبيعات الشهر واقفة عند 14/11 لأن التحديث كان يدوي وآخر تشغيل 16/11).
 on:
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -24,7 +27,7 @@ jobs:
       - run: pip install requests
       - name: Daily rows from store
         env:
-          MODE: ${{ inputs.mode }}
+          MODE: ${{ inputs.mode || 'apply' }}
           STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python dashboard_daily_from_store.py
       - name: Commit & Push
