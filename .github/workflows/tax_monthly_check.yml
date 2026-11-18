@@ -25,12 +25,14 @@ jobs:
           python-version: '3.10'
       - run: pip install requests openpyxl
       - name: Refresh DOOM products (REST, read-only)
+        continue-on-error: true   # 502 عابر من جوليب ما يوقفش التقرير (بيتبني من آخر نسخة)
         env:
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
           REQ_CAP: '70'
         run: python juleb_products_rest.py
       - name: Refresh VERA products (REST, read-only)
+        continue-on-error: true
         env:
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_VERA }}
           JULEB_API_BASE: https://phvera.juleb.com/api/v1
