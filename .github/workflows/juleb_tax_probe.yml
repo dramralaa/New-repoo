@@ -7,6 +7,9 @@ on:
       ref:
         description: 'ref الكود في juleb-daily-report'
         default: 'claude/work-a4mxc6'
+      script:
+        description: 'سكربت الفحص'
+        default: 'juleb_tax_probe.py'
 
 jobs:
   probe:
@@ -26,4 +29,4 @@ jobs:
         env:
           JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
           JULEB_API_BASE: https://medova.juleb.com/api/v1
-        run: python juleb_tax_probe.py
+        run: python ${{ github.event.inputs.script }}
