@@ -1,0 +1,29 @@
+# 🔎 فحص قراءة فقط (≤ 14 طلب، مسافة 3 ث): هل REST جوليب بيعرض ضريبة البيع؟ النتيجة تُطبع في اللوج بس.
+name: 🔎 فحص ضريبة جوليب (REST، يدوي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'ref الكود في juleb-daily-report'
+        default: 'claude/work-a4mxc6'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: ${{ github.event.inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Probe
+        env:
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+        run: python juleb_tax_probe.py
