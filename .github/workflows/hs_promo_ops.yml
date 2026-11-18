@@ -7,7 +7,7 @@ on:
     inputs:
       mode:
         type: choice
-        options: [discover, inspect, validate, status, create]
+        options: [discover, inspect, validate, status, create, categories]
         default: discover
       account:
         type: choice
