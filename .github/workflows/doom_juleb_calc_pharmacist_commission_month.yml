@@ -1,4 +1,4 @@
-name: 🧮 [DOOM] Calc Naflah Commission Month (يدوي)
+name: 🧮 [DOOM] Calc Pharmacist Commission Month (يدوي)
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dramralaa/juleb-daily-report
-          ref: claude/zealous-pasteur-dyn450
+          ref: main
           token: ${{ secrets.CROSS_REPO_TOKEN }}
       - uses: actions/setup-python@v5
         with:
@@ -29,13 +29,13 @@ jobs:
           JULEB_USER: ${{ secrets.JULEB_USER }}
           JULEB_PASS: ${{ secrets.JULEB_PASS }}
           CALC_MONTH: ${{ github.event.inputs.month }}
-        run: timeout 600 python juleb_calc_naflah_commission_month.py
+        run: timeout 600 python juleb_calc_pharmacist_commission_month.py
       - name: Commit result
         run: |
           git config user.name "3PI Automation"
           git config user.email "automation@3pi.local"
-          git add data/juleb_naflah_commission_*.json
-          git diff --cached --quiet || git commit -m "🧮 حساب عمولة نفلة للشهر (قراءة فقط) [vercel skip]"
+          git add data/juleb_*commission_*.json
+          git diff --cached --quiet || git commit -m "🧮 حساب عمولة صيدلاني للشهر (قراءة فقط) [vercel skip]"
           for i in 1 2 3 4; do
             timeout 60 git pull --rebase -q origin claude/zealous-pasteur-dyn450 && timeout 60 git push -q origin HEAD:claude/zealous-pasteur-dyn450 && exit 0
             sleep $((i*3))

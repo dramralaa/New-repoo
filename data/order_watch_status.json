@@ -3,13 +3,13 @@
  "alert_window_min": 20,
  "branches": {
   "1": {
-   "label": "دوم 1 - النسيم",
+   "label": "فرع 1",
    "last_check_utc": "2026-11-19T18:40:12.630777+00:00",
    "last_check_ok": true,
    "alerts": []
   },
   "2": {
-   "label": "دوم 2 - ظهرة لبن (12922)",
+   "label": "فرع 2",
    "last_check_utc": "2026-11-19T18:40:12.630777+00:00",
    "last_check_ok": true,
    "alerts": []

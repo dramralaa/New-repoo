@@ -11,7 +11,7 @@ on:
         required: true
         default: plan
       branch:
-        description: "1 = الروابي، 2 = النرجس، فاضي = الاتنين"
+        description: "1 = فرع 1، 2 = فرع 2، فاضي = الاتنين"
         required: false
         default: ""
 

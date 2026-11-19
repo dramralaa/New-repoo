@@ -1,4 +1,4 @@
-name: 🔍 [VERA] شكاوى كريم - سوالب النرجس + تكرار الأسماء (قراءة بس)
+name: 🔍 [VERA] شكاوى المدير - سوالب + تكرار الأسماء (قراءة بس)
 
 on:
   workflow_dispatch:
@@ -38,7 +38,7 @@ jobs:
             timeout 60 git fetch origin main && git reset -q --hard origin/main
             cp /tmp/d.json "$F" && git add "$F"
             git diff --cached --quiet && exit 0
-            git commit -q -m "🔍 فحص شكاوى كريم فيرا [vercel skip]"
+            git commit -q -m "🔍 فحص شكاوى فيرا [vercel skip]"
             timeout 60 git push origin HEAD:main && exit 0
             sleep $((i * 3))
           done

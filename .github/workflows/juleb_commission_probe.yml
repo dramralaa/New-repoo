@@ -1,4 +1,4 @@
-# 🔎 9 نوفمبر 2026 - فحص قراءة فقط لعمولة سطور نفلة/روان بعد إصلاح دعم جوليب. سقف 40 GET. بيكتب data/commission_probe.json في juleb-daily-report.
+# 🔎 9 نوفمبر 2026 - فحص قراءة فقط لعمولة سطور صيدلاني بعد إصلاح دعم جوليب. سقف 40 GET. بيكتب data/commission_probe.json في juleb-daily-report.
 name: 🔎 فحص عمولة سطور الصيادلة
 
 on:
