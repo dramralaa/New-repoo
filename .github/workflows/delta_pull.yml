@@ -2,6 +2,10 @@ name: 📥 سحب ملف أصناف دلتا (مرتين يوميًا + يدوي
 
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: '1 = اكتشاف شكل الطلبات (مرة للتجربة)'
+        default: '0'
   schedule:
     - cron: '7 3,12 * * *'  # 06:07 و15:07 بتوقيت الرياض - دخول واحد وتنزيل واحد في كل مرة
 
@@ -29,6 +33,7 @@ jobs:
           DELTA_CUSTOMER_CODE: ${{ secrets.DELTA_CUSTOMER_CODE }}
           DELTA_PASSWORD: ${{ secrets.DELTA_PASSWORD }}
           LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          DELTA_PROBE: ${{ github.event.inputs.probe }}
         run: python silent_run.py delta_pull.py
       - name: Commit result
         if: always()
