@@ -1,0 +1,55 @@
+name: 🖼️ سحب صور دلتا للكنز (تجربة 50 ثم كامل)
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'عدد الصور (50 للتجربة، 0 = الكل)'
+        default: '50'
+      push:
+        description: '1 = ادفع للشاردات | 0 = بدون دفع'
+        default: '1'
+
+concurrency:
+  group: delta-images
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pillow openpyxl
+      - name: Pull images
+        env:
+          DELTA_CUSTOMER_CODE: ${{ secrets.DELTA_CUSTOMER_CODE }}
+          DELTA_PASSWORD: ${{ secrets.DELTA_PASSWORD }}
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          PUSH: ${{ github.event.inputs.push }}
+        run: python silent_run.py delta_images.py
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep && cp data/delta/images_report.json data/delta/delta_enrich.csv /tmp/keep/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            mkdir -p data/delta && cp /tmp/keep/* data/delta/ 2>/dev/null || true
+            git add data/delta 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🖼️ تقرير سحب صور دلتا [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
