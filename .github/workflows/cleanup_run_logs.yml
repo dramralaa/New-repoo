@@ -22,10 +22,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 19 نوفمبر: ريبو عام فلوجات التشغيل مكشوفة - نمسح اللوج بعد 10 دقايق (سجل التشغيل نفسه يفضل ساعتين لمتابعة الصحة)
+          # 19 نوفمبر: ريبو عام فلوجات التشغيل مكشوفة - نمسح لوج التشغيلات الناجحة بعد 10 دقايق (لوجات الفشل بتفضل ساعتين للتشخيص مع باقي السجل)
           LCUT=$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
           for page in 1 2 3 4 5 6; do
-            ids=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100&status=completed&created=<$LCUT" --jq '.workflow_runs[].id')
+            ids=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100&status=success&created=<$LCUT" --jq '.workflow_runs[].id')
             [ -z "$ids" ] && break
             echo "$ids" | xargs -P 4 -I{} sh -c 'gh api -X DELETE repos/${{ github.repository }}/actions/runs/{}/logs >/dev/null 2>&1'
           done
