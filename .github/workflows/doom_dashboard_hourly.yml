@@ -34,7 +34,15 @@ jobs:
         run: |
           git config user.name "Juleb Bot"
           git config user.email "bot@juleb.local"
-          git add docs/dashboard_data.json
-          git diff --staged --quiet || git commit -m "📊 تحديث بيانات الداشبورد التلقائي"
-          git pull --rebase -q
-          git push
+          F=docs/dashboard_data.json
+          cp "$F" /tmp/dd.json
+          # 19 نوفمبر: الدفع كان بيفشل (non-fast-forward) لما دفعة تانية تسبقه - نعيد على آخر main بدل rebase
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/dd.json "$F" && git add "$F"
+            git diff --cached --quiet && exit 0
+            git commit -q -m "📊 تحديث بيانات الداشبورد التلقائي"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 4))
+          done
+          exit 1
