@@ -1,13 +1,13 @@
-name: 📥 سحب ملف أصناف دلتا (مرتين يوميًا + يدوي)
+name: 📥 سحب ملف أصناف دلتا (مرة يوميًا + يدوي)
 
 on:
   workflow_dispatch:
     inputs:
-      probe:
-        description: '1 = اكتشاف شكل الطلبات (مرة للتجربة)'
-        default: '0'
+      mode:
+        description: 'pull = سحب الملف والعروض | discover = اكتشاف ترقيم الصفحات ومسار الصور'
+        default: 'pull'
   schedule:
-    - cron: '7 3,12 * * *'  # 06:07 و15:07 بتوقيت الرياض - دخول واحد وتنزيل واحد في كل مرة
+    - cron: '7 3 * * *'  # مرة كل 24 ساعة (06:07 بتوقيت الرياض)
 
 concurrency:
   group: delta-pull
@@ -26,15 +26,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - run: pip install requests openpyxl playwright
-      - run: python -m playwright install --with-deps chromium
+      - run: pip install requests openpyxl
       - name: Pull
         env:
           DELTA_CUSTOMER_CODE: ${{ secrets.DELTA_CUSTOMER_CODE }}
           DELTA_PASSWORD: ${{ secrets.DELTA_PASSWORD }}
           LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
-          DELTA_PROBE: ${{ github.event.inputs.probe }}
-        run: python silent_run.py delta_pull.py
+        run: python silent_run.py delta_api.py ${{ github.event.inputs.mode || 'pull' }}
       - name: Commit result
         if: always()
         run: |
