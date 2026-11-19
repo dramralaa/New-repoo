@@ -52,13 +52,13 @@ jobs:
             cp data/branch_stock_web_status.json /tmp/pub/data/
             [ -f data/stock_balance_web.json ] && cp data/stock_balance_web.json /tmp/pub/data/
             grep -q branch_stock_web data/stock_balance.json 2>/dev/null && cp data/stock_balance.json /tmp/pub/data/
-            # ⏳ 15 نوفمبر 2026: لقطة التشغيلات/الانتهاء (REST، يوميًا من الحلقة على فرع النشر) → main لصفحة «إزالة الإكسبير» في داشبورد عمرو.
+            # ⏳ 15 نوفمبر 2026: لقطة التشغيلات/الانتهاء (REST، يوميًا من الحلقة على فرع النشر) → main لصفحة «إزالة الإكسبير» في داشبورد الإدارة.
             # بتتنسخ بس لو JSON سليم وفيه صفوف كفاية (أي فشل = الملف القديم يفضل). صفر طلبات لجوليب.
             curl -sS --max-time 60 -o /tmp/batch.json -H "Authorization: token ${{ secrets.CROSS_REPO_TOKEN }}" -H "Accept: application/vnd.github.raw" \
               "https://api.github.com/repos/dramralaa/juleb-daily-report/contents/data/rest_store/batch_expiry_doom.json?ref=claude/assortment-webhook-discovery-a4mxc6" \
               && python3 -c "import json,sys; d=json.load(open('/tmp/batch.json')); sys.exit(0 if len(d.get('rows') or [])>1000 and d.get('generated_at') else 1)" \
               && cp /tmp/batch.json /tmp/pub/data/batch_expiry_doom.json || echo "⚠️ لقطة التشغيلات ما اتنسختش"
-            # 🧾 15 نوفمبر 2026: سطور مبيعات الشهر (data/pos_sales/<YYYY-MM>.json، من مخزن الـAPI على فرع النشر) → main لصفحات داشبورد عمرو
+            # 🧾 15 نوفمبر 2026: سطور مبيعات الشهر (data/pos_sales/<YYYY-MM>.json، من مخزن الـAPI على فرع النشر) → main لصفحات داشبورد الإدارة
             # (عروض جاهز/تدوير المخزون). الشهر الحالي والسابق، بس لو نسخة main أقدم من 6 ساعات (تقليل حجم الريبو). صفر طلبات لجوليب.
             python3 - <<'PY' || echo "⚠️ نسخ سطور المبيعات ما تمش"
           import json, os, subprocess, urllib.request
@@ -89,7 +89,7 @@ jobs:
                   open(dst, "wb").write(raw)
                   subprocess.run(["git", "-C", "/tmp/pub", "add", dst], check=True)
                   print("🧾 نسخ", kind, ym, d["count"])
-          # 🎯 تارجت الشهر من إعدادات داشبورد دوم → main (Pharmacist 360 في داشبورد عمرو) - صغير، بيتنسخ لو اتغيّر
+          # 🎯 تارجت الشهر من إعدادات داشبورد دوم → main (Pharmacist 360 في داشبورد الإدارة) - صغير، بيتنسخ لو اتغيّر
           try:
               req = urllib.request.Request("https://api.github.com/repos/dramralaa/juleb-daily-report/contents/doom_trial_report/data_cache/monthly_targets.json?ref=claude/assortment-webhook-discovery-a4mxc6",
                                            headers={"Authorization": f"token {tok}", "Accept": "application/vnd.github.raw"})

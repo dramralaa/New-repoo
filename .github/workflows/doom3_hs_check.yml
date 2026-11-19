@@ -1,4 +1,4 @@
-name: 🔍 [DOOM 3 HS] فحص فرع الملك فهد (قراءة بس)
+name: 🔍 [DOOM 3 HS] فحص فرع 3 (قراءة بس)
 
 on:
   workflow_dispatch:

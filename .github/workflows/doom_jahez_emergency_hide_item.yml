@@ -1,4 +1,4 @@
-name: 🚨 [DOOM] إخفاء طارئ - Rybelsus من جاهز (يدوي، لمرة واحدة)
+name: 🚨 [DOOM] إخفاء طارئ لصنف من جاهز (يدوي، لمرة واحدة)
 
 on:
   workflow_dispatch:
