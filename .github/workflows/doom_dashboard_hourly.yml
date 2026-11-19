@@ -30,16 +30,26 @@ jobs:
           MODE: ${{ inputs.mode || 'apply' }}
           STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
         run: python dashboard_daily_from_store.py
+      - name: Shifts from store
+        # 19 نوفمبر: جدول الورديات من مخزن REST (جسر XML-RPC محجوب) - فشله ما يوقفش بيانات الداشبورد
+        continue-on-error: true
+        env:
+          MODE: apply
+          STORE_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python shifts_from_store.py
       - name: Commit & Push
         run: |
           git config user.name "Juleb Bot"
           git config user.email "bot@juleb.local"
           F=docs/dashboard_data.json
           cp "$F" /tmp/dd.json
+          S=data/doom_shifts.json
+          [ -f "$S" ] && cp "$S" /tmp/sh.json
           # 19 نوفمبر: الدفع كان بيفشل (non-fast-forward) لما دفعة تانية تسبقه - نعيد على آخر main بدل rebase
           for i in 1 2 3 4 5; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
             cp /tmp/dd.json "$F" && git add "$F"
+            [ -f /tmp/sh.json ] && cp /tmp/sh.json "$S" && git add "$S"
             git diff --cached --quiet && exit 0
             git commit -q -m "📊 تحديث بيانات الداشبورد التلقائي"
             timeout 60 git push origin HEAD:main && exit 0
