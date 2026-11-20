@@ -30,6 +30,8 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install requests pillow
+      - name: Mark start
+        run: touch /tmp/harvest_start
       - name: Harvest
         timeout-minutes: 325
         continue-on-error: true
@@ -48,7 +50,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          mkdir -p /tmp/keep/salla_stores && cp data/salla_harvest_report_*.json /tmp/keep/ 2>/dev/null || true; cp data/salla_stores/*.csv /tmp/keep/salla_stores/ 2>/dev/null || true
+          mkdir -p /tmp/keep/salla_stores
+          # فقط الملفات اللي التشغيلة دي كتبتها (قبل كده كانت بتدوس تقارير متاجر تانية بنسخ قديمة)
+          find data -maxdepth 1 -name "salla_harvest_report_*.json" -newer /tmp/harvest_start -exec cp {} /tmp/keep/ \; 2>/dev/null || true
+          find data/salla_stores -maxdepth 1 -name "*.csv" -newer /tmp/harvest_start -exec cp {} /tmp/keep/salla_stores/ \; 2>/dev/null || true
           for i in 1 2 3 4 5 6; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
             mkdir -p data/salla_stores && cp /tmp/keep/salla_harvest_report_*.json data/ 2>/dev/null || true; cp /tmp/keep/salla_stores/* data/salla_stores/ 2>/dev/null || true
