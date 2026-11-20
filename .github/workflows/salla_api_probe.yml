@@ -10,30 +10,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Magento GraphQL probe
+      - name: Sitemap and JSON-LD structure
         env:
           DOMS: ${{ github.event.inputs.domains }}
         run: |
           python3 - <<'EOF'
-          import os, requests, json
-          H = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json", "Accept": "application/json"}
+          import os, re, json, requests
+          H = {"User-Agent": "Mozilla/5.0"}
           for d in [x.strip() for x in os.environ["DOMS"].split(",") if x.strip()]:
-              for store in ("ar_sa", "en_sa", "default", None):
-                  hh = dict(H)
-                  if store:
-                      hh["Store"] = store
-                  q = {"query": "{ products(search: \"a\", pageSize: 3, currentPage: 1) { total_count page_info { total_pages } items { sku name url_key image { url } categories { name } } } }"}
-                  try:
-                      r = requests.post(f"https://{d}/graphql", headers=hh, json=q, timeout=30)
-                      print(d, "store", store, r.status_code, r.text[:350].replace("\n", " "))
-                      if r.status_code == 200 and "items" in r.text:
-                          break
-                  except Exception as e:
-                      print(d, store, "ERR", type(e).__name__)
-              for path in ("/rest/V1/store/storeViews", "/en-sa/sitemap.xml", "/sitemap.xml", "/robots.txt"):
-                  try:
-                      rr = requests.get(f"https://{d}{path}", headers={"User-Agent": "Mozilla/5.0"}, timeout=25)
-                      print("  GET", path, rr.status_code, rr.headers.get("content-type", "")[:25], rr.text[:100].replace("\n", " "))
-                  except Exception as e:
-                      print("  GET", path, "ERR", type(e).__name__)
+              r = requests.get(f"https://{d}/sitemap.xml", headers=H, timeout=30)
+              locs = re.findall(r"<loc>([^<]+)</loc>", r.text)
+              print(d, "sitemap index", r.status_code, len(locs), locs[:8])
+              prod_sm = [l for l in locs if "product" in l.lower()][:3] or locs[:2]
+              urls = []
+              for sm in prod_sm:
+                  rr = requests.get(sm, headers=H, timeout=30)
+                  u = re.findall(r"<loc>([^<]+)</loc>", rr.text)
+                  print("  sub", sm[-60:], rr.status_code, len(u), u[:2])
+                  urls += u
+              prods = [u for u in urls if "/product" in u.lower() or "/p/" in u.lower()] or urls
+              print("  total urls", len(urls), "product-like", len(prods))
+              for u in prods[:2]:
+                  p = requests.get(u, headers=H, timeout=30)
+                  ld = re.findall(r'application/ld\+json[^>]*>(.*?)</script>', p.text, re.S)
+                  print("  page", u[:90], p.status_code, len(p.text), "ldjson", len(ld))
+                  for x in ld[:4]:
+                      try:
+                          j = json.loads(x)
+                          js = j if isinstance(j, list) else [j]
+                          for e in js:
+                              if isinstance(e, dict) and e.get("@type") in ("Product", "ProductGroup"):
+                                  print("   PRODUCT", {k: str(e.get(k))[:60] for k in ("name", "sku", "gtin", "gtin13", "gtin12", "gtin8", "mpn", "image", "brand", "category")})
+                      except Exception as ex:
+                          print("   ld parse err", type(ex).__name__)
           EOF
