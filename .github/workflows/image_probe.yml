@@ -4,24 +4,27 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Probe public sources with a few barcodes
+      - name: Hit rate on open product databases (sample)
         run: |
           python3 - <<'EOF'
-          import requests, re
-          H = {"User-Agent": "Mozilla/5.0"}
-          bcs = ["4015400532552", "3014260022204", "8901030865279"]
-          urls = []
-          for b in bcs:
-              urls += [f"https://rowadaljamalstore.com/ar/search?q={b}",
-                       f"https://duniaalosra.com/ar/search?q={b}",
-                       f"https://world.openfoodfacts.org/api/v2/product/{b}.json"]
-          for u in urls:
-              try:
-                  r = requests.get(u, headers=H, timeout=20)
-                  imgs = re.findall(r'https?://[^"\s]+\.(?:jpg|jpeg|png|webp)', r.text)[:2]
-                  print(r.status_code, len(r.text), u.split("//")[1][:45], imgs)
-              except Exception as e:
-                  print("ERR", u.split("//")[1][:45], type(e).__name__)
+          import requests, time, json
+          H = {"User-Agent": "doom-pharmacy-catalog-check/1.0"}
+          bcs = json.loads('["6780782752567","3616303322007","6221382015596","6969002385161","6291108655962","819412024609","3337875787222","4015400532552","3014260022204","8901030865279","6285074004176","6285128000345","5000231023026","3337875597388","8717163965030","8909106037410","6281008575118","4084500208872","6285095000010","6288005208650"]')
+          for host in ["world.openfoodfacts.org", "world.openbeautyfacts.org", "world.openproductsfacts.org"]:
+              found = withimg = 0
+              for b in bcs:
+                  try:
+                      r = requests.get(f"https://{host}/api/v2/product/{b}.json?fields=code,image_front_url,image_url", headers=H, timeout=20)
+                      j = r.json() if r.status_code == 200 else {}
+                      if j.get("status") == 1:
+                          found += 1
+                          p = j.get("product", {})
+                          if p.get("image_front_url") or p.get("image_url"):
+                              withimg += 1
+                  except Exception as e:
+                      pass
+                  time.sleep(1)
+              print(host, "sample", len(bcs), "found", found, "with_image", withimg)
           EOF
