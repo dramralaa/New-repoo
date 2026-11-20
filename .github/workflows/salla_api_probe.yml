@@ -6,23 +6,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Find how the storefront API identifies a store
+      - name: Detect platform of candidate stores
         run: |
           python3 - <<'EOF'
           import requests, re
-          H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-          r = requests.get("https://rowadaljamalstore.com/ar", headers=H, timeout=20)
-          t = r.text
-          print("home", r.status_code, len(t))
-          for pat in (r'store[-_ ]?id["\'=: ]+["\']?(\d{6,})', r'"store":\s*\{[^}]{0,200}', r'store-identifier[^,;]{0,60}', r'api\.salla\.dev[^"\' ]{0,80}', r'salla\.config[^;]{0,200}'):
-              m = re.findall(pat, t)[:2]
-              print(pat[:28], "->", [x[:120] for x in m])
-          sid = "806872899"
-          url = "https://api.salla.dev/store/v1/products?per_page=2"
-          for hdr in ({"store-identifier": sid}, {"Store-Identifier": sid}, {"S-Store-Id": sid}, {}):
+          H = {"User-Agent": "Mozilla/5.0"}
+          doms = ["sidalih.com", "rawatalwatad.com", "lemure-pharmacie.com", "globemedonline.com", "daralamirat.com.sa", "alsultanpharmacy.com"]
+          marks = {"salla": ["cdn.salla.sa", "salla.network", "twilight", "salla-"], "shopify": ["cdn.shopify.com", "Shopify.theme", "myshopify"],
+                   "zid": ["zid.store", "zidcdn", "cdn.zid", "web.zid"], "woocommerce": ["woocommerce", "wp-content"], "magento": ["Magento", "mage-"], "wix": ["wixstatic"]}
+          for d in doms:
               try:
-                  rr = requests.get(url, headers={**H, **hdr}, timeout=20)
-                  print("hdr", list(hdr), rr.status_code, rr.text[:160].replace("\n", " "))
+                  r = requests.get(f"https://{d}/", headers=H, timeout=25, allow_redirects=True)
+                  t = r.text
+                  found = [k for k, v in marks.items() if any(x in t for x in v)]
+                  sid = re.search(r'"store":\{"id":(\d+)', t)
+                  print(d, r.status_code, len(t), "platform_marks", found, "salla_store_id", sid.group(1) if sid else None)
+                  try:
+                      p = requests.get(f"https://{d}/products.json?limit=2", headers=H, timeout=20)
+                      j = p.json() if p.status_code == 200 and "json" in p.headers.get("content-type", "") else None
+                      if j and j.get("products"):
+                          v = j["products"][0].get("variants", [{}])[0]
+                          print("   shopify products.json OK; sample keys", list(j["products"][0])[:8], "barcode", v.get("barcode"), "sku", v.get("sku"))
+                      else:
+                          print("   products.json", p.status_code)
+                  except Exception as e:
+                      print("   products.json ERR", type(e).__name__)
+                  rb = requests.get(f"https://{d}/robots.txt", headers=H, timeout=15)
+                  print("   robots", rb.status_code, [l for l in rb.text.splitlines() if l.lower().startswith(("sitemap", "crawl-delay"))][:2])
               except Exception as e:
-                  print("hdr", list(hdr), "ERR", type(e).__name__)
+                  print(d, "ERR", type(e).__name__, str(e)[:80])
           EOF
