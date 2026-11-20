@@ -1,0 +1,45 @@
+name: 📈 قياسات الكنز والتغطية (للغرفة)
+
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: treasure-metrics
+  cancel-in-progress: false
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Measure
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python silent_run.py treasure_metrics.py
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          cp data/health/treasure_metrics.json /tmp/tm.json 2>/dev/null || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            mkdir -p data/health && cp /tmp/tm.json data/health/treasure_metrics.json && git add data/health/treasure_metrics.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "📈 قياسات الكنز [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
