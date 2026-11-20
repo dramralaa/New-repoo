@@ -1,38 +1,48 @@
 name: 🔎 salla api probe (manual)
 on:
   workflow_dispatch:
+    inputs:
+      domains:
+        description: 'دومينات بفاصلة'
+        required: true
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Zid fields and Woo attributes
+      - name: Auto-classify platform by working public API
+        env:
+          DOMS: ${{ github.event.inputs.domains }}
         run: |
           python3 - <<'EOF'
-          import requests, json
+          import os, re, requests
           H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-          for d in ("care-outlet.com", "basmaonline.com", "wuduh-ph.com"):
+          def tj(url, **kw):
               try:
-                  r = requests.get(f"https://{d}/api/v1/products/?page=1", headers=H, timeout=25)
-                  j = r.json()
-                  res = j.get("results") or []
-                  print(d, r.status_code, "count", j.get("count"), "page_size", len(res), "next", str(j.get("next"))[:80], "keys", [k for k in j if k != "results"])
-                  if res and d == "care-outlet.com":
-                      p = res[0]
-                      print(" keys", list(p))
-                      show = {k: (str(v)[:70]) for k, v in p.items() if k in ("name", "sku", "slug", "barcode", "gtin", "categories", "images", "image", "main_image", "brand", "brands", "attributes", "html_url", "url")}
-                      print(" sample", json.dumps(show, ensure_ascii=False)[:900])
+                  r = requests.get(url, headers=H, timeout=25, **kw)
+                  return r.status_code, (r.json() if "json" in r.headers.get("content-type", "") else None), r
               except Exception as e:
-                  print(d, "ERR", type(e).__name__, str(e)[:100])
-          d = "mawaredalhijaz-pharmacy.com"
-          try:
-              r = requests.get(f"https://{d}/wp-json/wc/store/v1/products?per_page=40&page=3", headers=H, timeout=30)
-              j = r.json()
-              skus = [p.get("sku") for p in j]
-              print("woo page3 n", len(j), "non-empty sku", sum(1 for s in skus if s), skus[:6])
-              p = next((x for x in j if x.get("attributes")), None)
-              print(" attrs", json.dumps(p.get("attributes")[:3], ensure_ascii=False)[:400] if p else None)
-              print(" brands", [x.get("brands") for x in j[:3]])
-          except Exception as e:
-              print("woo ERR", type(e).__name__, str(e)[:100])
+                  return type(e).__name__, None, None
+          for d in [x.strip() for x in os.environ["DOMS"].split(",") if x.strip()]:
+              res = []
+              st, _, r = tj(f"https://{d}/")
+              home = r.text if r is not None else ""
+              final = r.url[:50] if r is not None else ""
+              sid = re.search(r'"store":\{"id":(\d+)', home)
+              if sid:
+                  st2, j, _ = tj("https://api.salla.dev/store/v1/products?per_page=2", headers={**H, "store-identifier": sid.group(1)}) if False else (None, None, None)
+                  res.append(f"SALLA id={sid.group(1)}")
+              st, j, _ = tj(f"https://{d}/products.json?limit=2")
+              if isinstance(j, dict) and j.get("products"):
+                  v = j["products"][0].get("variants", [{}])[0]
+                  res.append(f"SHOPIFY barcode={v.get('barcode')} sku={str(v.get('sku'))[:15]}")
+              st, j, _ = tj(f"https://{d}/api/v1/products/?page=1&page_size=2")
+              if isinstance(j, dict) and j.get("results") is not None:
+                  p = (j["results"] or [{}])[0]
+                  res.append(f"ZID count={j.get('count')} barcode={p.get('barcode')} sku={str(p.get('sku'))[:15]}")
+              st, j, _ = tj(f"https://{d}/wp-json/wc/store/v1/products?per_page=2")
+              if isinstance(j, list) and j:
+                  res.append(f"WOO sku={j[0].get('sku')}")
+              marks = [k for k, v in {"magento": "Magento", "wix": "wixstatic", "opencart": "opencart", "prestashop": "prestashop"}.items() if v in home]
+              print(d, "home", st if not res else "", "->", " | ".join(res) or "UNKNOWN", marks, final)
           EOF
