@@ -1,0 +1,53 @@
+name: 🖼️ سحب صور الجولة 13 من صفحات متجر عام
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'عدد الأصناف (5 للتجربة، 0 = الكل)'
+        default: '5'
+      push:
+        description: '1 = ادفع للشاردات | 0 = بدون دفع'
+        default: '1'
+
+concurrency:
+  group: salla-images
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pillow
+      - name: Pull images
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          PUSH: ${{ github.event.inputs.push }}
+        run: python silent_run.py salla_images.py
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep && cp data/salla_images_report.json /tmp/keep/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/keep/* data/ 2>/dev/null || true
+            git add data/salla_images_report.json 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🖼️ تقرير سحب صور الجولة 13 [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
