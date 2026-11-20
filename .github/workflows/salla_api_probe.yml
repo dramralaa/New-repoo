@@ -6,45 +6,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Woo / Zid / new store
+      - name: Zid fields and Woo attributes
         run: |
           python3 - <<'EOF'
-          import requests, re, json
-          H = {"User-Agent": "Mozilla/5.0"}
-          # 1) WooCommerce Store API
+          import requests, json
+          H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+          for d in ("care-outlet.com", "basmaonline.com", "wuduh-ph.com"):
+              try:
+                  r = requests.get(f"https://{d}/api/v1/products/?page=1", headers=H, timeout=25)
+                  j = r.json()
+                  res = j.get("results") or []
+                  print(d, r.status_code, "count", j.get("count"), "page_size", len(res), "next", str(j.get("next"))[:80], "keys", [k for k in j if k != "results"])
+                  if res and d == "care-outlet.com":
+                      p = res[0]
+                      print(" keys", list(p))
+                      show = {k: (str(v)[:70]) for k, v in p.items() if k in ("name", "sku", "slug", "barcode", "gtin", "categories", "images", "image", "main_image", "brand", "brands", "attributes", "html_url", "url")}
+                      print(" sample", json.dumps(show, ensure_ascii=False)[:900])
+              except Exception as e:
+                  print(d, "ERR", type(e).__name__, str(e)[:100])
           d = "mawaredalhijaz-pharmacy.com"
           try:
-              r = requests.get(f"https://{d}/wp-json/wc/store/v1/products?per_page=2", headers=H, timeout=25)
-              print("woo", r.status_code, r.headers.get("content-type", "")[:30], r.headers.get("x-wp-total"), r.headers.get("x-wp-totalpages"))
-              j = r.json() if r.status_code == 200 else None
-              if j:
-                  p = j[0]
-                  print("  keys", list(p)[:20])
-                  print("  sku", p.get("sku"), "img", (p.get("images") or [{}])[0].get("src"), "cats", [c.get("name") for c in p.get("categories", [])][:2])
+              r = requests.get(f"https://{d}/wp-json/wc/store/v1/products?per_page=40&page=3", headers=H, timeout=30)
+              j = r.json()
+              skus = [p.get("sku") for p in j]
+              print("woo page3 n", len(j), "non-empty sku", sum(1 for s in skus if s), skus[:6])
+              p = next((x for x in j if x.get("attributes")), None)
+              print(" attrs", json.dumps(p.get("attributes")[:3], ensure_ascii=False)[:400] if p else None)
+              print(" brands", [x.get("brands") for x in j[:3]])
           except Exception as e:
-              print("woo ERR", type(e).__name__, str(e)[:80])
-          # 2) new store platform
-          d = "asrar-co.com"
-          try:
-              r = requests.get(f"https://{d}/ar", headers=H, timeout=25, allow_redirects=True)
-              t = r.text
-              marks = {"salla": ["cdn.salla.sa", "salla.network", "twilight"], "shopify": ["cdn.shopify.com"], "zid": ["zid.store", "zidcdn", "cdn.zid", "web.zid"], "woo": ["woocommerce"]}
-              sid = re.search(r'"store":\{"id":(\d+)', t)
-              print(d, r.status_code, r.url[:40], [k for k, v in marks.items() if any(x in t for x in v)], "salla_id", sid.group(1) if sid else None)
-          except Exception as e:
-              print(d, "ERR", type(e).__name__)
-          # 3) Zid: look for API hints in page
-          d = "care-outlet.com"
-          try:
-              t = requests.get(f"https://{d}/", headers=H, timeout=30).text
-              hits = sorted(set(re.findall(r'https?://[A-Za-z0-9./_-]*(?:zid)[A-Za-z0-9./_-]*', t)))[:15]
-              print("zid hints", hits)
-              for pat in (r'"store_?id"\s*:\s*"?(\d+)', r'storeId["\']?\s*[:=]\s*["\']?(\w+)', r'X-Manager-Token', r'/api/v\d/[a-z/_-]+'):
-                  m = re.findall(pat, t)[:4]
-                  print(" ", pat[:30], m)
-              for path in ("/api/v1/products/?page=1", "/api/v1/products", "/products.json", "/sitemap.xml", "/sitemap_products_1.xml"):
-                  rr = requests.get(f"https://{d}{path}", headers=H, timeout=20)
-                  print("  GET", path, rr.status_code, rr.headers.get("content-type", "")[:25], rr.text[:80].replace("\n", " "))
-          except Exception as e:
-              print("zid ERR", type(e).__name__, str(e)[:80])
+              print("woo ERR", type(e).__name__, str(e)[:100])
           EOF
