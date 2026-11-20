@@ -6,31 +6,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Salla storefront structure
+      - name: Salla product page structure
         run: |
           python3 - <<'EOF'
           import requests, re, json
           H = {"User-Agent": "Mozilla/5.0"}
-          for base in ["https://rowadaljamalstore.com", "https://duniaalosra.com"]:
-              try:
-                  r = requests.get(base + "/sitemap.xml", headers=H, timeout=20)
-                  locs = re.findall(r"<loc>([^<]+)</loc>", r.text)
-                  print(base, "sitemap", r.status_code, len(locs), locs[:4])
-                  prod = [l for l in locs if "product" in l.lower()][:1]
-                  if prod:
-                      r2 = requests.get(prod[0], headers=H, timeout=20)
-                      sub = re.findall(r"<loc>([^<]+)</loc>", r2.text)
-                      print(" product sitemap", r2.status_code, len(sub), sub[:2])
-                      if sub:
-                          r3 = requests.get(sub[0], headers=H, timeout=20)
-                          ld = re.findall(r'application/ld\+json[^>]*>(.*?)</script>', r3.text, re.S)
-                          print(" page", r3.status_code, len(r3.text), "ldjson", len(ld))
-                          for x in ld[:3]:
-                              try:
-                                  j = json.loads(x)
-                                  print("  keys", list(j)[:15] if isinstance(j, dict) else type(j), {k: j.get(k) for k in ("gtin", "gtin13", "gtin12", "sku", "mpn") if isinstance(j, dict)})
-                              except Exception as e:
-                                  print("  parse err", type(e).__name__)
-              except Exception as e:
-                  print(base, "ERR", type(e).__name__, str(e)[:80])
+          base = "https://rowadaljamalstore.com"
+          tot = 0
+          first = None
+          for i in (1, 2, 3):
+              r = requests.get(f"{base}/ar/sitemap-{i}.xml", headers=H, timeout=20)
+              locs = re.findall(r"<loc>([^<]+)</loc>", r.text)
+              prods = [l for l in locs if "/p" in l.rsplit("/", 1)[-1]]
+              tot += len(prods)
+              first = first or (prods[0] if prods else None)
+              print("sitemap", i, r.status_code, "urls", len(locs), "product-like", len(prods))
+          print("total product urls", tot, first)
+          if first:
+              r3 = requests.get(first, headers=H, timeout=20)
+              t = r3.text
+              print("page", r3.status_code, len(t))
+              for pat in ("gtin", "barcode", "sku", "\"mpn\"", "og:image"):
+                  m = re.search(pat + r'.{0,80}', t)
+                  print(pat, "->", m.group(0)[:100] if m else None)
           EOF
