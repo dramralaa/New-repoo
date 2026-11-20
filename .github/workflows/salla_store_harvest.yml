@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       domains:
-        description: 'دومينات المتاجر بفاصلة (بدون https)'
+        description: 'دومينات المتاجر بفاصلة (بدون https). بادئات: shopify: zid: woo:'
         required: true
       max_pages:
         description: 'أقصى عدد صفحات لكل متجر'
@@ -15,10 +15,6 @@ on:
       all:
         description: '1 = إثراء كامل (كل المنتجات بالباركود بما فيها الأدوية بعلامة drug_flag) | 0 = الأصناف الناقصة فقط'
         default: '0'
-
-concurrency:
-  group: salla-harvest
-  cancel-in-progress: false
 
 jobs:
   harvest:
@@ -35,6 +31,8 @@ jobs:
           python-version: '3.10'
       - run: pip install requests pillow
       - name: Harvest
+        timeout-minutes: 325
+        continue-on-error: true
         env:
           TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
@@ -42,6 +40,7 @@ jobs:
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
           PUSH: ${{ github.event.inputs.push }}
           ALL: ${{ github.event.inputs.all }}
+          MAX_SECONDS: '18000'
         run: python silent_run.py salla_store_harvest.py
       - name: Commit report
         if: always()
@@ -49,13 +48,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
-          mkdir -p /tmp/keep/salla_stores && cp data/salla_harvest_report.json /tmp/keep/ 2>/dev/null || true; cp data/salla_stores/*.csv /tmp/keep/salla_stores/ 2>/dev/null || true
-          for i in 1 2 3 4 5; do
+          mkdir -p /tmp/keep/salla_stores && cp data/salla_harvest_report_*.json /tmp/keep/ 2>/dev/null || true; cp data/salla_stores/*.csv /tmp/keep/salla_stores/ 2>/dev/null || true
+          for i in 1 2 3 4 5 6; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
-            mkdir -p data/salla_stores && cp /tmp/keep/salla_harvest_report.json data/ 2>/dev/null || true; cp /tmp/keep/salla_stores/* data/salla_stores/ 2>/dev/null || true
-            git add data/salla_harvest_report.json data/salla_stores 2>/dev/null || true
+            mkdir -p data/salla_stores && cp /tmp/keep/salla_harvest_report_*.json data/ 2>/dev/null || true; cp /tmp/keep/salla_stores/* data/salla_stores/ 2>/dev/null || true
+            git add data/salla_harvest_report_*.json data/salla_stores 2>/dev/null || true
             git diff --cached --quiet && exit 0
             git commit -q -m "🛍️ تقرير حصاد متاجر سلة [vercel skip]"
             timeout 60 git push origin HEAD:main && exit 0
-            sleep $((i * 3))
+            sleep $((i * 4))
           done
