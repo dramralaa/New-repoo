@@ -1,0 +1,28 @@
+name: 🔎 salla api probe (manual)
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Find how the storefront API identifies a store
+        run: |
+          python3 - <<'EOF'
+          import requests, re
+          H = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+          r = requests.get("https://rowadaljamalstore.com/ar", headers=H, timeout=20)
+          t = r.text
+          print("home", r.status_code, len(t))
+          for pat in (r'store[-_ ]?id["\'=: ]+["\']?(\d{6,})', r'"store":\s*\{[^}]{0,200}', r'store-identifier[^,;]{0,60}', r'api\.salla\.dev[^"\' ]{0,80}', r'salla\.config[^;]{0,200}'):
+              m = re.findall(pat, t)[:2]
+              print(pat[:28], "->", [x[:120] for x in m])
+          sid = "806872899"
+          url = "https://api.salla.dev/store/v1/products?per_page=2"
+          for hdr in ({"store-identifier": sid}, {"Store-Identifier": sid}, {"S-Store-Id": sid}, {}):
+              try:
+                  rr = requests.get(url, headers={**H, **hdr}, timeout=20)
+                  print("hdr", list(hdr), rr.status_code, rr.text[:160].replace("\n", " "))
+              except Exception as e:
+                  print("hdr", list(hdr), "ERR", type(e).__name__)
+          EOF
