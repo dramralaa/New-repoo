@@ -11,28 +11,28 @@ jobs:
           python3 - <<'EOF'
           import requests, re
           H = {"User-Agent": "Mozilla/5.0"}
-          doms = ["sidalih.com", "rawatalwatad.com", "lemure-pharmacie.com", "globemedonline.com", "daralamirat.com.sa", "alsultanpharmacy.com"]
-          marks = {"salla": ["cdn.salla.sa", "salla.network", "twilight", "salla-"], "shopify": ["cdn.shopify.com", "Shopify.theme", "myshopify"],
-                   "zid": ["zid.store", "zidcdn", "cdn.zid", "web.zid"], "woocommerce": ["woocommerce", "wp-content"], "magento": ["Magento", "mage-"], "wix": ["wixstatic"]}
+          doms = ["adel-online.com", "lemon.sa", "mawared.sa", "mawaredalhijaz-pharmacy.com", "care-outlet.com", "foozpharmacy.com", "basmaonline.com", "wuduh-ph.com"]
+          marks = {"salla": ["cdn.salla.sa", "salla.network", "twilight"], "shopify": ["cdn.shopify.com", "Shopify.theme", "myshopify"],
+                   "zid": ["zid.store", "zidcdn", "cdn.zid", "web.zid"], "woocommerce": ["woocommerce"], "magento": ["Magento"], "wix": ["wixstatic"]}
           for d in doms:
               try:
                   r = requests.get(f"https://{d}/", headers=H, timeout=25, allow_redirects=True)
                   t = r.text
                   found = [k for k, v in marks.items() if any(x in t for x in v)]
                   sid = re.search(r'"store":\{"id":(\d+)', t)
-                  print(d, r.status_code, len(t), "platform_marks", found, "salla_store_id", sid.group(1) if sid else None)
+                  print(d, r.status_code, len(t), "final", r.url[:40], "marks", found, "salla_id", sid.group(1) if sid else None)
                   try:
                       p = requests.get(f"https://{d}/products.json?limit=2", headers=H, timeout=20)
                       j = p.json() if p.status_code == 200 and "json" in p.headers.get("content-type", "") else None
                       if j and j.get("products"):
                           v = j["products"][0].get("variants", [{}])[0]
-                          print("   shopify products.json OK; sample keys", list(j["products"][0])[:8], "barcode", v.get("barcode"), "sku", v.get("sku"))
+                          print("   shopify OK barcode", v.get("barcode"), "sku", v.get("sku"))
                       else:
                           print("   products.json", p.status_code)
                   except Exception as e:
                       print("   products.json ERR", type(e).__name__)
                   rb = requests.get(f"https://{d}/robots.txt", headers=H, timeout=15)
-                  print("   robots", rb.status_code, [l for l in rb.text.splitlines() if l.lower().startswith(("sitemap", "crawl-delay"))][:2])
+                  print("   robots", rb.status_code, [l for l in rb.text.splitlines() if l.lower().startswith("crawl-delay")][:1])
               except Exception as e:
                   print(d, "ERR", type(e).__name__, str(e)[:80])
           EOF
