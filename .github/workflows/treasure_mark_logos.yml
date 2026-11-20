@@ -1,0 +1,28 @@
+name: 🏷️ وسم صور متاجر عليها لوجو (الكنز)
+
+on:
+  workflow_dispatch:
+    inputs:
+      stores:
+        description: 'أجزاء أسماء المتاجر بفاصلة'
+        required: false
+        default: 'rawatalwatad,mawared'
+
+jobs:
+  mark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Mark
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOGO_STORES: ${{ github.event.inputs.stores }}
+        run: python treasure_mark_logos.py
