@@ -1,0 +1,27 @@
+name: 🔎 image source probe (manual)
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe public sources with a few barcodes
+        run: |
+          python3 - <<'EOF'
+          import requests, re
+          H = {"User-Agent": "Mozilla/5.0"}
+          bcs = ["4015400532552", "3014260022204", "8901030865279"]
+          urls = []
+          for b in bcs:
+              urls += [f"https://rowadaljamalstore.com/ar/search?q={b}",
+                       f"https://duniaalosra.com/ar/search?q={b}",
+                       f"https://world.openfoodfacts.org/api/v2/product/{b}.json"]
+          for u in urls:
+              try:
+                  r = requests.get(u, headers=H, timeout=20)
+                  imgs = re.findall(r'https?://[^"\s]+\.(?:jpg|jpeg|png|webp)', r.text)[:2]
+                  print(r.status_code, len(r.text), u.split("//")[1][:45], imgs)
+              except Exception as e:
+                  print("ERR", u.split("//")[1][:45], type(e).__name__)
+          EOF
