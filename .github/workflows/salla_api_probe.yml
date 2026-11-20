@@ -1,4 +1,4 @@
-name: 🔎 salla api probe (manual)
+name: 🔎 store platform detect (manual)
 on:
   workflow_dispatch:
     inputs:
@@ -8,22 +8,47 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Raw sitemap and page hints
+      - name: Detect platform + product counts
         env:
           DOMS: ${{ github.event.inputs.domains }}
         run: |
           python3 - <<'EOF'
           import os, re, json, requests
           H = {"User-Agent": "Mozilla/5.0"}
-          d = os.environ["DOMS"].split(",")[0].strip()
-          r = requests.get(f"https://{d}/sitemaps/ar-sa/product/1.xml", headers=H, timeout=30)
-          print("product sitemap", r.status_code, len(r.content), r.headers.get("content-type"), r.headers.get("content-encoding"), repr(r.text[:300]))
-          r = requests.get(f"https://{d}/sitemaps/ar-sa/category/1.xml", headers=H, timeout=30)
-          print("category sitemap", r.status_code, len(r.content), repr(r.text[:300]))
-          h = requests.get(f"https://{d}/ar-sa", headers=H, timeout=30).text
-          print("home len", len(h))
-          for pat in (r'"buildId":"([^"]+)"', r'/(?:ar-sa|en-sa)/product[^"\s<>]{0,80}', r'/(?:ar-sa|en-sa)/p/[^"\s<>]{0,80}', r'https://[^"\s]*algolia[^"\s]*', r'https://[^"\s]*api[^"\s]{0,60}'):
-              print(pat[:30], "->", sorted(set(re.findall(pat, h)))[:6])
+          def get(u, **k):
+              try:
+                  return requests.get(u, headers=H, timeout=25, **k)
+              except Exception as e:
+                  return type("R", (), {"status_code": 0, "text": str(e)[:60], "headers": {}, "content": b""})()
+          for d in [x.strip() for x in os.environ["DOMS"].split(",") if x.strip()]:
+              h = get(f"https://{d}/")
+              t = h.text if h.status_code == 200 else ""
+              sig = []
+              if re.search(r'cdn\.salla\.sa|salla\.sa|"store":\{"id"', t): sig.append("salla")
+              if re.search(r'cdn\.shopify\.com|Shopify\.', t): sig.append("shopify")
+              if re.search(r'zid\.store|zid-store|cdn\.zid', t, re.I): sig.append("zid")
+              if re.search(r'wp-content|woocommerce', t, re.I): sig.append("woo")
+              if re.search(r'__NEXT_DATA__|magento|Magento', t): sig.append("other:next/magento")
+              sh = get(f"https://{d}/products.json?limit=3")
+              wc = get(f"https://{d}/wp-json/wc/store/v1/products?per_page=3")
+              zd = get(f"https://{d}/api/v1/products/?page=1&page_size=3")
+              info = {"domain": d, "home": h.status_code, "signals": sig,
+                      "shopify_json": sh.status_code, "woo_api": wc.status_code, "zid_api": zd.status_code}
+              try:
+                  if wc.status_code == 200:
+                      j = wc.json(); info["woo_sample"] = [{"name": x.get("name"), "sku": x.get("sku")} for x in j[:2]]
+                      info["woo_total"] = wc.headers.get("X-WP-Total")
+                  if sh.status_code == 200:
+                      info["shopify_sample"] = [{"t": x.get("title"), "bc": [v.get("barcode") or v.get("sku") for v in x.get("variants", [])][:1]} for x in sh.json().get("products", [])[:2]]
+                  if zd.status_code == 200:
+                      j = zd.json(); info["zid_count"] = j.get("count"); info["zid_sample"] = [{"n": (x.get("name") or "")[:40], "bc": x.get("barcode"), "sku": x.get("sku")} for x in (j.get("results") or [])[:2]]
+              except Exception as e:
+                  info["parse_err"] = str(e)[:80]
+              m = re.search(r'"store":\{"id":(\d+)', t)
+              if m:
+                  info["salla_store_id"] = m.group(1)
+                  s = get("https://api.salla.dev/store/v1/products?per_page=2", headers={**H, "store-identifier": m.group(1)}) if False else None
+              print(json.dumps(info, ensure_ascii=False))
           EOF
