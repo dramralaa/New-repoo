@@ -10,37 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Sitemap and JSON-LD structure
+      - name: Raw sitemap and page hints
         env:
           DOMS: ${{ github.event.inputs.domains }}
         run: |
           python3 - <<'EOF'
           import os, re, json, requests
           H = {"User-Agent": "Mozilla/5.0"}
-          for d in [x.strip() for x in os.environ["DOMS"].split(",") if x.strip()]:
-              r = requests.get(f"https://{d}/sitemap.xml", headers=H, timeout=30)
-              locs = re.findall(r"<loc>([^<]+)</loc>", r.text)
-              print(d, "sitemap index", r.status_code, len(locs), locs[:8])
-              prod_sm = [l for l in locs if "product" in l.lower()][:3] or locs[:2]
-              urls = []
-              for sm in prod_sm:
-                  rr = requests.get(sm, headers=H, timeout=30)
-                  u = re.findall(r"<loc>([^<]+)</loc>", rr.text)
-                  print("  sub", sm[-60:], rr.status_code, len(u), u[:2])
-                  urls += u
-              prods = [u for u in urls if "/product" in u.lower() or "/p/" in u.lower()] or urls
-              print("  total urls", len(urls), "product-like", len(prods))
-              for u in prods[:2]:
-                  p = requests.get(u, headers=H, timeout=30)
-                  ld = re.findall(r'application/ld\+json[^>]*>(.*?)</script>', p.text, re.S)
-                  print("  page", u[:90], p.status_code, len(p.text), "ldjson", len(ld))
-                  for x in ld[:4]:
-                      try:
-                          j = json.loads(x)
-                          js = j if isinstance(j, list) else [j]
-                          for e in js:
-                              if isinstance(e, dict) and e.get("@type") in ("Product", "ProductGroup"):
-                                  print("   PRODUCT", {k: str(e.get(k))[:60] for k in ("name", "sku", "gtin", "gtin13", "gtin12", "gtin8", "mpn", "image", "brand", "category")})
-                      except Exception as ex:
-                          print("   ld parse err", type(ex).__name__)
+          d = os.environ["DOMS"].split(",")[0].strip()
+          r = requests.get(f"https://{d}/sitemaps/ar-sa/product/1.xml", headers=H, timeout=30)
+          print("product sitemap", r.status_code, len(r.content), r.headers.get("content-type"), r.headers.get("content-encoding"), repr(r.text[:300]))
+          r = requests.get(f"https://{d}/sitemaps/ar-sa/category/1.xml", headers=H, timeout=30)
+          print("category sitemap", r.status_code, len(r.content), repr(r.text[:300]))
+          h = requests.get(f"https://{d}/ar-sa", headers=H, timeout=30).text
+          print("home len", len(h))
+          for pat in (r'"buildId":"([^"]+)"', r'/(?:ar-sa|en-sa)/product[^"\s<>]{0,80}', r'/(?:ar-sa|en-sa)/p/[^"\s<>]{0,80}', r'https://[^"\s]*algolia[^"\s]*', r'https://[^"\s]*api[^"\s]{0,60}'):
+              print(pat[:30], "->", sorted(set(re.findall(pat, h)))[:6])
           EOF
