@@ -12,6 +12,9 @@ on:
       push:
         description: '1 = ادفع للشاردات | 0 = بدون دفع'
         default: '0'
+      all:
+        description: '1 = إثراء كامل (كل المنتجات بالباركود بما فيها الأدوية بعلامة drug_flag) | 0 = الأصناف الناقصة فقط'
+        default: '0'
 
 concurrency:
   group: salla-harvest
@@ -20,7 +23,7 @@ concurrency:
 jobs:
   harvest:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,6 +41,7 @@ jobs:
           DOMAINS: ${{ github.event.inputs.domains }}
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
           PUSH: ${{ github.event.inputs.push }}
+          ALL: ${{ github.event.inputs.all }}
         run: python silent_run.py salla_store_harvest.py
       - name: Commit report
         if: always()
