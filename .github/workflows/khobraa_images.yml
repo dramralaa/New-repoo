@@ -1,0 +1,43 @@
+name: 🖼️ صور خبراء المجتمع (الجسر) للكنز
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: khobraa-images
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pillow
+      - name: Pull images
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python silent_run.py khobraa_images.py
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          cp data/khobraa_images_report.json /tmp/kr.json 2>/dev/null || exit 0
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/kr.json data/khobraa_images_report.json && git add data/khobraa_images_report.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🖼️ تقرير صور خبراء المجتمع [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
