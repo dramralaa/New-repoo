@@ -2,6 +2,8 @@ name: 📊 [DOOM] Dashboard Data Sync
 
 # 16 نوفمبر 2026: اتحوّل للمخزن (dashboard_daily_from_store.py، صفر طلبات لجوليب).
 # 18 نوفمبر 2026: رجّعنا الجدولة كل ساعة (شكوى مديري دوم: مبيعات الشهر واقفة عند 14/11 لأن التحديث كان يدوي وآخر تشغيل 16/11).
+# 21 نوفمبر 2026: (1) الافتراضي اليدوي بقى apply (قبل كده plan = تشغيل «ناجح» بدون كتابة فالداشبورد يفضل قديم).
+#   (2) نسخ ملف نشاط المنصات الحيّ من فرع البيانات لـmain (التطبيق المنشور بيقرا من main؛ الملف كان واقف عند 2 نوفمبر في غرفة المتابعة).
 on:
   schedule:
     - cron: '17 * * * *'
@@ -9,7 +11,7 @@ on:
     inputs:
       mode:
         description: 'plan = يطبع بس | apply = يحدّث docs/dashboard_data.json'
-        default: 'plan'
+        default: 'apply'
 
 jobs:
   sync:
@@ -45,11 +47,21 @@ jobs:
           cp "$F" /tmp/dd.json
           S=data/doom_shifts.json
           [ -f "$S" ] && cp "$S" /tmp/sh.json
+          # 21 نوفمبر: نشاط المنصات الحيّ (بيتبني في حلقة LIVE على فرع البيانات) → main. أي فشل: بنكمّل من غيره.
+          A=data/delivery_platform_activity.json
+          DB=claude/assortment-webhook-discovery-a4mxc6
+          rm -f /tmp/act.json
+          if timeout 90 git fetch -q origin "$DB" 2>/dev/null && git show "origin/$DB:$A" > /tmp/act.json 2>/dev/null && python -c "import json;json.load(open('/tmp/act.json'))" 2>/dev/null; then
+            echo "🧾 نشاط المنصات اتسحب من فرع البيانات"
+          else
+            rm -f /tmp/act.json; echo "⚠️ تعذّر سحب نشاط المنصات - بنكمّل من غيره"
+          fi
           # 19 نوفمبر: الدفع كان بيفشل (non-fast-forward) لما دفعة تانية تسبقه - نعيد على آخر main بدل rebase
           for i in 1 2 3 4 5; do
             timeout 60 git fetch origin main && git reset -q --hard origin/main
             cp /tmp/dd.json "$F" && git add "$F"
             [ -f /tmp/sh.json ] && cp /tmp/sh.json "$S" && git add "$S"
+            [ -s /tmp/act.json ] && cp /tmp/act.json "$A" && git add "$A"
             git diff --cached --quiet && exit 0
             git commit -q -m "📊 تحديث بيانات الداشبورد التلقائي"
             timeout 60 git push origin HEAD:main && exit 0
