@@ -1,0 +1,74 @@
+name: 🔎 salla store discover (manual, read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'دومين متجر سلة (من غير https)'
+        required: true
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Discover (GET only)
+        env:
+          DOM: ${{ github.event.inputs.domain }}
+        run: |
+          python3 - <<'EOF'
+          import os, re, json, time, requests
+          from collections import Counter
+          H = {"User-Agent": "Mozilla/5.0"}
+          d = os.environ["DOM"].strip()
+          t = requests.get(f"https://{d}/", headers=H, timeout=40).text
+          m = re.search(r'"store":\{"id":(\d+)', t)
+          sid = m.group(1) if m else None
+          print("store_id", sid)
+          for k in ("og:title", "og:description", "og:site_name", "theme-color"):
+              mm = re.search(r'<meta[^>]*(?:property|name)="%s"[^>]*content="([^"]*)"' % k, t)
+              print("meta", k, (mm.group(1)[:140] if mm else None))
+          print("jsonld_types", re.findall(r'"@type"\s*:\s*"([^"]+)"', t)[:12])
+          print("theme", re.findall(r'themes/(\d+)/([\d.]+)/', t)[:1])
+          print("socials", sorted(set(re.findall(r'https?://(?:www\.)?(?:instagram|twitter|x|tiktok|snapchat|facebook|youtube|wa)\.[a-z]+/[^"\'\s<]+', t)))[:10])
+          print("phones/emails", sorted(set(re.findall(r'(?:\+?966|05)\d{8,9}', t)))[:5], sorted(set(re.findall(r'[\w.+-]+@[\w-]+\.[\w.]+', t)))[:5])
+          # sitemaps
+          idx = requests.get(f"https://{d}/sitemap.xml", headers=H, timeout=40).text
+          maps = re.findall(r"<loc>([^<]+)</loc>", idx)
+          print("sitemaps", len(maps))
+          kinds = Counter()
+          allurls = []
+          for sm in maps:
+              try:
+                  x = requests.get(sm, headers=H, timeout=60).text
+              except Exception as e:
+                  print("sitemap_err", sm, str(e)[:50]); continue
+              locs = re.findall(r"<loc>([^<]+)</loc>", x)
+              allurls += locs
+              time.sleep(0.5)
+          for u in allurls:
+              p = u.split("://", 1)[-1].split("/", 1)[-1]
+              if re.search(r"/p\d+$", u): kinds["product"] += 1
+              elif re.search(r"/c\d+$", u): kinds["category"] += 1
+              elif "/brands" in u or re.search(r"/b\d+$", u): kinds["brand"] += 1
+              elif "/blog" in u: kinds["blog"] += 1
+              elif re.search(r"/page-", u) or "/page" in u: kinds["page"] += 1
+              else: kinds["other"] += 1
+          print("sitemap_urls", len(allurls), dict(kinds))
+          print("other_samples", [u for u in allurls if not re.search(r"/(p|c)\d+$", u)][:25])
+          # public store API
+          if sid:
+              HH = {**H, "store-identifier": sid}
+              B = "https://api.salla.dev/store/v1"
+              eps = ["products", "categories", "brands", "pages", "blog/articles", "settings", "currencies", "countries", "cities", "branches", "offers", "reviews", "payments", "shipping", "faqs", "testimonials", "tags", "home", "menus", "footer"]
+              for ep in eps:
+                  try:
+                      r = requests.get(f"{B}/{ep}", headers=HH, params={"per_page": 2}, timeout=40)
+                      try: j = r.json()
+                      except Exception: j = {}
+                      data = j.get("data")
+                      pg = j.get("pagination") or j.get("cursor") or {}
+                      first = (data[0] if isinstance(data, list) and data else data)
+                      print("api", ep, r.status_code, "n=", (len(data) if isinstance(data, list) else type(data).__name__), "pg=", json.dumps(pg, ensure_ascii=False)[:160], "keys=", (list(first.keys())[:22] if isinstance(first, dict) else None))
+                  except Exception as e:
+                      print("api", ep, "ERR", str(e)[:60])
+                  time.sleep(0.6)
+          EOF
