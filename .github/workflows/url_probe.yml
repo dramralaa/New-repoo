@@ -1,0 +1,37 @@
+name: 🔎 url probe (manual, read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'رابط الصفحة'
+        required: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch and summarize (GET only)
+        env:
+          URL: ${{ github.event.inputs.url }}
+        run: |
+          python3 - <<'EOF'
+          import os, re, json, requests
+          H = {"User-Agent": "Mozilla/5.0"}
+          u = os.environ["URL"]
+          r = requests.get(u, headers=H, timeout=40, allow_redirects=True)
+          print("status", r.status_code, "final", r.url, "len", len(r.text), "ctype", r.headers.get("content-type"))
+          print("server", r.headers.get("server"), "x-powered-by", r.headers.get("x-powered-by"))
+          t = r.text
+          print("title", re.findall(r"<title>(.*?)</title>", t, re.S)[:1])
+          print("scripts", sorted(set(re.findall(r'src="([^"]+\.js[^"]*)"', t)))[:12])
+          print("api hints", sorted(set(re.findall(r'["\'](/(?:api|graphql|rest|_next|trpc)[^"\']{0,80})["\']', t)))[:20])
+          print("forms/inputs", re.findall(r'<input[^>]*type="(?:password|email|text)"[^>]*>', t)[:6])
+          print("login hints", [w for w in ("login", "sign in", "password", "تسجيل") if w in t.lower()])
+          print("head", re.sub(r"\s+", " ", t[:1500]))
+          for p in ("/robots.txt", "/sitemap.xml", "/api/products", "/api/catalog", "/api/items"):
+              try:
+                  x = requests.get(u.rstrip("/") + p, headers=H, timeout=20)
+                  print(p, x.status_code, x.headers.get("content-type"), re.sub(r"\s+", " ", x.text[:200]))
+              except Exception as e:
+                  print(p, "ERR", str(e)[:60])
+          EOF
