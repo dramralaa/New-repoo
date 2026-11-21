@@ -1,0 +1,32 @@
+name: 🏷️ وسم مشاكل جودة الكنز (من تدقيق 3pi)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1 = عدّ بس بدون دفع | 0 = تطبيق'
+        default: '1'
+      issues_file:
+        description: 'اسم ملف التقرير في treasure-exchange/from_3pi'
+        default: 'quality_issues_2026-11-21.json'
+
+jobs:
+  mark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Mark
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          DRY: ${{ github.event.inputs.dry }}
+          ISSUES_FILE: ${{ github.event.inputs.issues_file }}
+        run: python treasure_mark_quality.py
