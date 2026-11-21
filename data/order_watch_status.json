@@ -1,16 +1,16 @@
 {
- "generated_at_utc": "2026-11-21T17:09:54.449035+00:00",
+ "generated_at_utc": "2026-11-21T17:10:17.191768+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "فرع 1",
-   "last_check_utc": "2026-11-21T17:09:54.449035+00:00",
+   "last_check_utc": "2026-11-21T17:10:17.191768+00:00",
    "last_check_ok": true,
    "alerts": []
   },
   "2": {
    "label": "فرع 2",
-   "last_check_utc": "2026-11-21T17:09:54.449035+00:00",
+   "last_check_utc": "2026-11-21T17:10:17.191768+00:00",
    "last_check_ok": true,
    "alerts": []
   }
