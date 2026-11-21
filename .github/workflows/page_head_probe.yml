@@ -1,0 +1,33 @@
+name: 🔎 page head probe (manual, read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: 'روابط صفحات بفاصلة'
+        required: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch heads (GET only)
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+        run: |
+          python3 - <<'EOF'
+          import os, re, json, requests
+          H = {"User-Agent": "Mozilla/5.0"}
+          for u in [x.strip() for x in os.environ["URLS"].split(",") if x.strip()]:
+              r = requests.get(u, headers=H, timeout=40)
+              t = r.text
+              print("==", u, r.status_code, len(t), "cache:", r.headers.get("cf-cache-status"), "age:", r.headers.get("age"))
+              print(" titles:", [x.strip()[:80] for x in re.findall(r"<title[^>]*>(.*?)</title>", t, re.S)])
+              print(" meta_desc:", [x[:70] for x in re.findall(r'<meta[^>]*name="description"[^>]*content="([^"]*)"', t)])
+              print(" og:title:", [x[:70] for x in re.findall(r'<meta[^>]*property="og:title"[^>]*content="([^"]*)"', t)])
+              print(" og:image:", re.findall(r'<meta[^>]*property="og:image"[^>]*content="([^"]*)"', t)[:3])
+              print(" canonical:", re.findall(r'<link[^>]*rel="canonical"[^>]*href="([^"]*)"', t))
+              print(" h1:", [re.sub(r"<[^>]+>", "", x).strip()[:70] for x in re.findall(r"<h1[^>]*>(.*?)</h1>", t, re.S)][:3])
+              lds = re.findall(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', t, re.S)
+              print(" ld+json blocks:", len(lds), [re.findall(r'"@type"\s*:\s*"([^"]+)"', b)[:3] for b in lds])
+              print(" has 'Pampers' / 'بامبرز':", "Pampers" in t, "بامبرز" in t)
+          EOF
