@@ -1,0 +1,44 @@
+name: 🏪 سحب كامل لمتجر آيلن (قراءة فقط - البيانات على ريبو خاص)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: aylin-store-dump
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Dump
+        env:
+          DOM: store.aylin.sa
+          MAX_SECONDS: '16000'
+        run: python aylin_store_dump.py
+      - name: Commit data (private repo)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep && cp -r data/aylin /tmp/keep/ 2>/dev/null || true
+          for i in 1 2 3 4 5; do
+            timeout 120 git fetch origin main && git reset -q --hard origin/main
+            mkdir -p data && cp -r /tmp/keep/aylin data/ 2>/dev/null || true
+            git add data/aylin 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🏪 سحب كامل لمتجر آيلن [vercel skip]"
+            timeout 120 git push origin HEAD:main && exit 0
+            sleep $((i * 4))
+          done
