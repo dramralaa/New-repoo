@@ -20,14 +20,21 @@ jobs:
           for u in [x.strip() for x in os.environ["URLS"].split(",") if x.strip()]:
               r = requests.get(u, headers=H, timeout=40)
               t = r.text
-              print("==", u, r.status_code, len(t), "cache:", r.headers.get("cf-cache-status"), "age:", r.headers.get("age"))
-              print(" titles:", [x.strip()[:80] for x in re.findall(r"<title[^>]*>(.*?)</title>", t, re.S)])
-              print(" meta_desc:", [x[:70] for x in re.findall(r'<meta[^>]*name="description"[^>]*content="([^"]*)"', t)])
-              print(" og:title:", [x[:70] for x in re.findall(r'<meta[^>]*property="og:title"[^>]*content="([^"]*)"', t)])
-              print(" og:image:", re.findall(r'<meta[^>]*property="og:image"[^>]*content="([^"]*)"', t)[:3])
-              print(" canonical:", re.findall(r'<link[^>]*rel="canonical"[^>]*href="([^"]*)"', t))
-              print(" h1:", [re.sub(r"<[^>]+>", "", x).strip()[:70] for x in re.findall(r"<h1[^>]*>(.*?)</h1>", t, re.S)][:3])
+              print("==", u, r.status_code, len(t))
+              print(" title:", [x.strip()[:60] for x in re.findall(r"<title[^>]*>(.*?)</title>", t, re.S)], "| h1:", [re.sub(r"<[^>]+>", "", x).strip()[:50] for x in re.findall(r"<h1[^>]*>(.*?)</h1>", t, re.S)][:1])
               lds = re.findall(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', t, re.S)
-              print(" ld+json blocks:", len(lds), [re.findall(r'"@type"\s*:\s*"([^"]+)"', b)[:3] for b in lds])
-              print(" has 'Pampers' / 'بامبرز':", "Pampers" in t, "بامبرز" in t)
+              for b in lds:
+                  if '"Product"' in b:
+                      try:
+                          j = json.loads(b)
+                      except ValueError:
+                          print(" product-ld (raw):", re.sub(r"\s+", " ", b)[:600]); continue
+                      j = j[0] if isinstance(j, list) else j
+                      of = j.get("offers") if isinstance(j, dict) else None
+                      print(" product-ld keys:", list(j.keys()))
+                      print(" ld name:", str(j.get("name"))[:60], "| sku:", j.get("sku"), "| gtin:", j.get("gtin") or j.get("gtin13"), "| mpn:", j.get("mpn"), "| brand:", j.get("brand"))
+                      print(" ld offers:", json.dumps(of, ensure_ascii=False)[:420])
+              print(" price snippets:", [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x))[:70] for x in re.findall(r'<[^>]*(?:price|سعر)[^>]*>.{0,120}', t, re.S)][:8])
+              print(" data-price attrs:", re.findall(r'data-price="([^"]*)"', t)[:5], "| itemprop price:", re.findall(r'itemprop="price"[^>]*content="([^"]*)"', t)[:3], "| meta price:", re.findall(r'<meta[^>]*(?:product:price|price:amount)[^>]*content="([^"]*)"', t)[:3])
+              print(" tax words:", [w for w in ("شامل الضريبة", "غير شامل", "الضريبة", "VAT", "ضريبة") if w in t])
           EOF
