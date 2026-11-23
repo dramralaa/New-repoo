@@ -1,23 +1,16 @@
 {
- "generated_at_utc": "2026-11-23T12:48:24.807351+00:00",
+ "generated_at_utc": "2026-11-23T12:48:49.054344+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "فرع 1",
-   "last_check_utc": "2026-11-23T12:48:24.807351+00:00",
+   "last_check_utc": "2026-11-23T12:48:49.054344+00:00",
    "last_check_ok": true,
-   "alerts": [
-    {
-     "order_key": "1:1253700",
-     "order_ref": "1253700",
-     "amount": 46.89,
-     "order_time_utc": "2026-11-23T12:28:27.159948+00:00"
-    }
-   ]
+   "alerts": []
   },
   "2": {
    "label": "فرع 2",
-   "last_check_utc": "2026-11-23T12:48:24.807351+00:00",
+   "last_check_utc": "2026-11-23T12:48:49.054344+00:00",
    "last_check_ok": true,
    "alerts": []
   }
