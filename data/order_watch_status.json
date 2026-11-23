@@ -1,10 +1,10 @@
 {
- "generated_at_utc": "2026-11-23T12:44:54.770197+00:00",
+ "generated_at_utc": "2026-11-23T12:45:17.935362+00:00",
  "alert_window_min": 20,
  "branches": {
   "1": {
    "label": "فرع 1",
-   "last_check_utc": "2026-11-23T12:44:54.770197+00:00",
+   "last_check_utc": "2026-11-23T12:45:17.935362+00:00",
    "last_check_ok": true,
    "alerts": [
     {
@@ -17,7 +17,7 @@
   },
   "2": {
    "label": "فرع 2",
-   "last_check_utc": "2026-11-23T12:44:54.770197+00:00",
+   "last_check_utc": "2026-11-23T12:45:17.935362+00:00",
    "last_check_ok": true,
    "alerts": []
   }
