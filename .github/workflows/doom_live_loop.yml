@@ -193,9 +193,25 @@ jobs:
             local NOWTS; NOWTS=$(date +%s)
             # لو لسه جوه الـ20 دقيقة: ما نسجّلش الملف كمتعالج، فيتنفّذ أول ما المهلة تخلص
             # 14 نوفمبر 2026 (قرار صاحب المشروع): تخفيف الحمل على المنصات - كل 30 دقيقة وقت الذروة (13:00-24:00 رياض)، وكل 120 دقيقة باقي اليوم
-            local HRN MINGAP; HRN=$((10#$(TZ=Asia/Riyadh date +%H)))
-            if [ $HRN -ge 13 ]; then MINGAP=1800; else MINGAP=7200; fi
+            # 🗓️ 23 نوفمبر 2026 (قرار صاحب المشروع): تقليل دورات المنصات لـ 38 دورة/يوم كحد أقصى حسب توقيتات الذروة (من أوردرات 24 أكتوبر ←
+            # 23 نوفمبر لكل الفروع): كل 30 دقيقة (دورتين/ساعة) من 13:00 لـ 03:00 رياض، وكل 60 دقيقة من 03:00 لـ 13:00 = 38 دورة. حد هنجر 30-60 دقيقة.
+            # أيام 27 و28 و29 من كل شهر (ضغط مبيعات): المعدل القديم (30 دقيقة بعد 13:00، و120 دقيقة قبلها).
+            local HRN MINGAP DOM; HRN=$((10#$(TZ=Asia/Riyadh date +%H))); DOM=$((10#$(TZ=Asia/Riyadh date +%d)))
+            if [ $DOM -ge 27 ] && [ $DOM -le 29 ]; then
+              if [ $HRN -ge 13 ]; then MINGAP=1800; else MINGAP=7200; fi
+            else
+              if [ $HRN -ge 13 ] || [ $HRN -lt 3 ]; then MINGAP=1800; else MINGAP=3600; fi
+            fi
             [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge $MINGAP ] || return 0
+            # ✂️ إلغاء الدورة لو مفيش أي تغيير فعلي في الأرصدة (ولا في قرارات الاستبعاد/OTC) عن آخر دورة اتشغّلت: الدورة دي مش هتضيف حاجة.
+            local CUR_HASH
+            CUR_HASH=$(python3 stock_state_hash.py 2>/dev/null)
+            if [ -n "$CUR_HASH" ] && [ "$CUR_HASH" = "${LAST_STOCK_HASH:-}" ]; then
+              LAST_STOCK_GEN="$GEN"
+              echo "✂️ ملف رصيد جديد ($GEN) بدون أي تغيير فعلي في الأرصدة ← دورة المنصات اتلغت"
+              return 0
+            fi
+            LAST_STOCK_HASH="$CUR_HASH"
             LAST_STOCK_GEN="$GEN"
             LAST_STOCK_DISPATCH=$NOWTS
             local CODE
