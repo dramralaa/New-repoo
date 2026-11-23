@@ -26,6 +26,13 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install pytz requests
+      - name: استرجاع كاش كتالوج جاهز (قراءة كاملة كل 3 ساعات بدل كل دورة - 23 نوفمبر 2026)
+        uses: actions/cache/restore@v4
+        with:
+          path: data/jahez_cache
+          key: jahez-cache-${{ github.run_id }}
+          restore-keys: |
+            jahez-cache-
       - name: دورة المنصات
         env:
           PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
@@ -61,3 +68,9 @@ jobs:
           TELEGRAM_TOKEN_DOOM: ${{ secrets.TELEGRAM_TOKEN_DOOM }}
           TELEGRAM_CHAT_ID_DOOM: ${{ secrets.TELEGRAM_CHAT_ID_DOOM }}
         run: bash scripts/platform_cycle.sh
+      - name: حفظ كاش كتالوج جاهز
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/jahez_cache
+          key: jahez-cache-${{ github.run_id }}
