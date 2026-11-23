@@ -1,0 +1,48 @@
+name: 🗑️ [DOOM Jahez] إلغاء خصومات MILK/BOX الأقل من الحد
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1 = يعرض القايمة بس (افتراضي) | 0 = يلغي فعلًا'
+        default: '1'
+      min_pct:
+        description: 'الحد الأدنى للنسبة %'
+        default: '5'
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests pytz
+      - name: Cancel
+        env:
+          JAHEZ_TOKEN: ${{ secrets.JAHEZ_TOKEN }}
+          JAHEZ_STORE_ID: ${{ secrets.JAHEZ_STORE_ID }}
+          DRY: ${{ inputs.dry }}
+          MIN_PCT: ${{ inputs.min_pct }}
+        run: python jahez_cancel_low_discounts.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          cp data/jahez_cancel_low_result.json /tmp/r.json
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/r.json data/jahez_cancel_low_result.json
+            git add data/jahez_cancel_low_result.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🗑️ نتيجة إلغاء خصومات جاهز الضعيفة [vercel skip]"
+            git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
