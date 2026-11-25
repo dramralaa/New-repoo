@@ -15,6 +15,9 @@ on:
       all:
         description: '1 = إثراء كامل (كل المنتجات بالباركود بما فيها الأدوية بعلامة drug_flag) | 0 = الأصناف الناقصة فقط'
         default: '0'
+      request_file:
+        description: 'حصاد موجّه: مسار ملف طلب الصور داخل ريبو البيانات (مثال data/treasure_image_request_2026-11-25.json). فاضي = الوضع العادي'
+        default: ''
 
 jobs:
   harvest:
@@ -42,6 +45,7 @@ jobs:
           MAX_PAGES: ${{ github.event.inputs.max_pages }}
           PUSH: ${{ github.event.inputs.push }}
           ALL: ${{ github.event.inputs.all }}
+          REQUEST_FILE: ${{ github.event.inputs.request_file }}
           MAX_SECONDS: '18000'
         run: python silent_run.py salla_store_harvest.py
       - name: Commit report
