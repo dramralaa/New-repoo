@@ -1,0 +1,95 @@
+name: 🛍️ حصاد متاجر بالتوازي (كل متجر في تشغيلة)
+
+on:
+  workflow_dispatch:
+    inputs:
+      domains:
+        description: 'دومينات بفاصلة (بدون https). كل دومين بتشغيلة مستقلة بالتوازي. بدون بادئة = كشف تلقائي للمنصة'
+        required: true
+      max_pages:
+        description: 'أقصى عدد صفحات لكل متجر'
+        default: '700'
+      push:
+        description: '1 = ادفع للشاردات | 0 = بدون دفع'
+        default: '1'
+      request_file:
+        description: 'ملف طلب الباركودات (فاضي = الأصناف الناقصة فقط)'
+        default: 'data/treasure_image_request_2026-11-25.json'
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          DOMS: ${{ github.event.inputs.domains }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          ds = []
+          for x in os.environ["DOMS"].split(","):
+              x = x.strip()
+              if not x:
+                  continue
+              if ":" not in x:
+                  x = "auto:" + x
+              if x not in ds:
+                  ds.append(x)
+          print("matrix=" + json.dumps({"dom": ds}))
+          PY
+
+  harvest:
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-ara
+          pip install requests pillow pytesseract
+      - name: Mark start
+        run: touch /tmp/harvest_start
+      - name: Harvest
+        timeout-minutes: 325
+        continue-on-error: true
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          LOG_GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          DOMAINS: ${{ matrix.dom }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages }}
+          PUSH: ${{ github.event.inputs.push }}
+          REQUEST_FILE: ${{ github.event.inputs.request_file }}
+          MAX_SECONDS: '18000'
+        run: python silent_run.py salla_store_harvest.py
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep/salla_stores
+          find data -maxdepth 1 -name "salla_harvest_report_*.json" -newer /tmp/harvest_start -exec cp {} /tmp/keep/ \; 2>/dev/null || true
+          find data/salla_stores -maxdepth 1 -name "*.csv" -newer /tmp/harvest_start -exec cp {} /tmp/keep/salla_stores/ \; 2>/dev/null || true
+          for i in 1 2 3 4 5 6 7 8; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            mkdir -p data/salla_stores && cp /tmp/keep/salla_harvest_report_*.json data/ 2>/dev/null || true; cp /tmp/keep/salla_stores/* data/salla_stores/ 2>/dev/null || true
+            git add data/salla_harvest_report_*.json data/salla_stores 2>/dev/null || true
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🛍️ تقرير حصاد متجر [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 5 + RANDOM % 10))
+          done
