@@ -182,14 +182,24 @@ jobs:
               echo "📡 تشغيل سحب Branch Stock ($B): HTTP $CODE"
             done
           }
+          # 🐛 25 نوفمبر 2026: متغيّرات الحالة كانت shell، والدالة بتتنادى من نسختين (المراقب الخلفي كل 60 ث + الحلقة الرئيسية) فكل نسخة ليها حالة
+          # لوحدها → دورتين منصات في نفس اللحظة وضعف المعدل (≈100 دورة/يوم بدل 38). دلوقتي الحالة في ملفات /tmp مشتركة + قفل (mkdir) يمنع التداخل.
+          _stk_get() { cat "/tmp/stk_$1" 2>/dev/null || true; }
+          _stk_set() { printf '%s' "$2" > "/tmp/stk_$1"; }
           stock_followup() {
+            find /tmp/stk_lock -maxdepth 0 -mmin +5 -exec rmdir {} \; 2>/dev/null || true
+            mkdir /tmp/stk_lock 2>/dev/null || return 0
+            _stock_followup_inner
+            rmdir /tmp/stk_lock 2>/dev/null || true
+          }
+          _stock_followup_inner() {
             pull_dispatch
             timeout 30 git fetch -q origin main 2>/dev/null || return 0
             local GEN
             GEN=$(git show origin/main:data/stock_balance.json 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin).get('generated_at',''))" 2>/dev/null) || GEN=""
             [ -n "$GEN" ] || return 0
-            if [ -z "$LAST_STOCK_GEN" ]; then LAST_STOCK_GEN="$GEN"; return 0; fi
-            [ "$GEN" != "$LAST_STOCK_GEN" ] || return 0
+            if [ -z "$(_stk_get gen)" ]; then _stk_set gen "$GEN"; return 0; fi
+            [ "$GEN" != "$(_stk_get gen)" ] || return 0
             local NOWTS; NOWTS=$(date +%s)
             # لو لسه جوه الـ20 دقيقة: ما نسجّلش الملف كمتعالج، فيتنفّذ أول ما المهلة تخلص
             # 14 نوفمبر 2026 (قرار صاحب المشروع): تخفيف الحمل على المنصات - كل 30 دقيقة وقت الذروة (13:00-24:00 رياض)، وكل 120 دقيقة باقي اليوم
@@ -202,18 +212,18 @@ jobs:
             else
               if [ $HRN -ge 13 ] || [ $HRN -lt 3 ]; then MINGAP=1800; else MINGAP=3600; fi
             fi
-            [ $((NOWTS - ${LAST_STOCK_DISPATCH:-0})) -ge $MINGAP ] || return 0
+            [ $((NOWTS - $(_stk_get dispatch | grep -E '^[0-9]+$' || echo 0))) -ge $MINGAP ] || return 0
             # ✂️ إلغاء الدورة لو مفيش أي تغيير فعلي في الأرصدة (ولا في قرارات الاستبعاد/OTC) عن آخر دورة اتشغّلت: الدورة دي مش هتضيف حاجة.
             local CUR_HASH
             CUR_HASH=$(python3 stock_state_hash.py 2>/dev/null)
-            if [ -n "$CUR_HASH" ] && [ "$CUR_HASH" = "${LAST_STOCK_HASH:-}" ]; then
-              LAST_STOCK_GEN="$GEN"
+            if [ -n "$CUR_HASH" ] && [ "$CUR_HASH" = "$(_stk_get hash)" ]; then
+              _stk_set gen "$GEN"
               echo "✂️ ملف رصيد جديد ($GEN) بدون أي تغيير فعلي في الأرصدة ← دورة المنصات اتلغت"
               return 0
             fi
-            LAST_STOCK_HASH="$CUR_HASH"
-            LAST_STOCK_GEN="$GEN"
-            LAST_STOCK_DISPATCH=$NOWTS
+            _stk_set hash "$CUR_HASH"
+            _stk_set gen "$GEN"
+            _stk_set dispatch "$NOWTS"
             local CODE
             CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST -H "Authorization: token $VERA_PUSH_TOKEN" -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/platform_cycle.yml/dispatches" -d '{"ref":"main"}' 2>/dev/null || echo 000)
