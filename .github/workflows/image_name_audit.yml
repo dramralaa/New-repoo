@@ -1,0 +1,69 @@
+name: 🖼️ تدقيق تطابق الصور مع أسماء الأصناف (OCR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: 'عدد الأجزاء (كل جزء تشغيلة بالتوازي)'
+        default: '30'
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          N: ${{ github.event.inputs.shards }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("matrix=" + json.dumps({"shard": list(range(n))}))
+          PY
+
+  audit:
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install OCR
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-ara
+          pip install requests pillow pytesseract
+      - name: Audit
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+        run: python -u image_name_audit.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          mkdir -p /tmp/keep
+          cp data/image_audit/shard_*.json /tmp/keep/ 2>/dev/null || exit 0
+          for i in 1 2 3 4 5 6 7 8; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            mkdir -p data/image_audit && cp /tmp/keep/shard_*.json data/image_audit/
+            git add data/image_audit
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🖼️ تدقيق الصور: جزء [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 5 + RANDOM % 10))
+          done
