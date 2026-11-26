@@ -1,0 +1,56 @@
+name: 🔄 مزامنة الكنز ← treasure-exchange (آلي)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '1 = بدون كتابة (تجربة)'
+        default: '0'
+  workflow_run:
+    workflows:
+      - "🛍️ حصاد متاجر سلة العامة بالباركود"
+      - "🛍️ حصاد متاجر بالتوازي (كل متجر في تشغيلة)"
+    types: [completed]
+  schedule:
+    - cron: '40 6 * * *'
+
+concurrency:
+  group: treasure-sync-exchange
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Sync
+        env:
+          TREASURE_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+          DRY: ${{ github.event.inputs.dry || '0' }}
+        run: python treasure_sync_exchange.py
+      - name: Commit report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.CROSS_REPO_TOKEN }}@github.com/dramralaa/juleb-daily-report.git
+          [ -f data/treasure_sync_report.json ] || exit 0
+          cp data/treasure_sync_report.json /tmp/r.json
+          for i in 1 2 3 4 5; do
+            timeout 60 git fetch origin main && git reset -q --hard origin/main
+            cp /tmp/r.json data/treasure_sync_report.json
+            git add data/treasure_sync_report.json
+            git diff --cached --quiet && exit 0
+            git commit -q -m "🔄 تقرير مزامنة الكنز [vercel skip]"
+            timeout 60 git push origin HEAD:main && exit 0
+            sleep $((i * 3))
+          done
