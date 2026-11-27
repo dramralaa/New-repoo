@@ -16,7 +16,7 @@ on:
         default: '120'
 
 concurrency:
-  group: doom-rest-cache
+  group: doom-order-counts-backfill
   cancel-in-progress: false
 
 jobs:
