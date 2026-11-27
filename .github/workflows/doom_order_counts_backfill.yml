@@ -1,0 +1,68 @@
+# 🧾 28 نوفمبر 2026 (موافقة المالك): سحب عدد الفواتير اليومية للشهور القديمة (أغسطس–أكتوبر) - قراءة فقط - يدوي فقط.
+# يضيف `orders` لأرشيف مبيعات الفروع (كروت المقارنة) ويسجّل مقارنة الإجمالي مع الأرشيف في data/pos_order_counts_backfill.json. ما بيعدّلش أي مبلغ.
+name: 🧾 [DOOM] سحب عدد الفواتير التاريخي
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: 'من تاريخ'
+        default: '2026-08-01'
+      to_date:
+        description: 'إلى تاريخ'
+        default: '2026-10-31'
+      req_cap:
+        description: 'سقف الطلبات'
+        default: '120'
+
+concurrency:
+  group: doom-rest-cache
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: dramralaa/juleb-daily-report
+          ref: claude/assortment-webhook-discovery-a4mxc6
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+      - name: Bring in latest main scripts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch -q origin main && git merge -q --no-edit origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install requests
+      - name: Pull order counts (read-only)
+        env:
+          PLATFORM_PAUSE: ${{ vars.PLATFORM_PAUSE }}
+          JULEB_API_KEY: ${{ secrets.JULEB_API_KEY_DOOM }}
+          JULEB_API_BASE: https://medova.juleb.com/api/v1
+          FROM_DATE: ${{ inputs.from_date }}
+          TO_DATE: ${{ inputs.to_date }}
+          REQ_CAP: ${{ inputs.req_cap }}
+        run: |
+          [ -n "$JULEB_API_KEY" ] || { echo "⛔ مفتاح دوم غير موجود"; exit 1; }
+          case ",$(echo "$PLATFORM_PAUSE" | tr 'A-Z;' 'a-z,')," in *,juleb,*|*,all,*) echo "⛔ زرار الإيقاف مفعّل"; exit 0;; esac
+          python pos_order_counts_backfill.py
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pos_order_counts_backfill.json doom_trial_report/data_cache/branch_sales_archive.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "لا تغيير"; exit 0; }
+          git commit -q -m "🧾 عدد الفواتير التاريخي للأرشيف [vercel skip]"
+          for i in 1 2 3 4 5; do
+            timeout 60 git push && exit 0
+            timeout 60 git fetch origin claude/assortment-webhook-discovery-a4mxc6
+            git rebase -X theirs origin/claude/assortment-webhook-discovery-a4mxc6 || git rebase --abort
+            sleep $((i*3))
+          done
+          exit 1
